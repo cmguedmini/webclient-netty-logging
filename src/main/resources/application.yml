@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+# Logging configuration
+logging:
+  level:
+    com.chaouki.webclient.logs: DEBUG
+    reactor.netty.http.client: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# WebClient configuration
+webclient:
+  base-url: https://jsonplaceholder.typicode.com
+  timeout:
+    connection: 5000
+    response: 10000
+  max-in-memory-size: 1048576 # 1MB
+  logging:
+    enabled: true
+    include-headers: true
+    include-body: true
+    max-body-size: 1000
+
+# Management endpoints - Enhanced for dynamic logging control
+management:
+  endpoint:
+    loggers:
+      enabled: true
+    health:
+      enabled: true
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,env,webclient-logging
+  info:
+    build:
+      enabled: true
+    env:
+      enabled: true
