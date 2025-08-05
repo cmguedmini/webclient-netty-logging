@@ -1,0 +1,121 @@
+# application.yml (Configuration par défaut)
+spring:
+  profiles:
+    active: dev
+  application:
+    name: multi-auth-security
+  h2:
+    console:
+      enabled: true
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+server:
+  port: 8080
+
+# Configuration Actuator par défaut
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.example: DEBUG
+
+---
+# Configuration pour l'environnement UAT
+spring:
+  config:
+    activate:
+      on-profile: uat
+  datasource:
+    url: jdbc:h2:mem:uatdb
+
+server:
+  port: 8081
+
+# En UAT : tous les endpoints Actuator sont exposés (sécurité gérée par SecurityConfig)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # Tous les endpoints
+  endpoint:
+    health:
+      show-details: always
+    shutdown:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.example: INFO
+
+---
+# Configuration pour l'environnement PROD
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:h2:mem:proddb
+
+server:
+  port: 8082
+
+# En PROD : endpoints Actuator limités et sécurisés
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never  # Ne jamais montrer les détails en prod par défaut
+    shutdown:
+      enabled: false  # Désactivé en production
+
+# Configuration de sécurité renforcée pour la production
+logging:
+  level:
+    org.springframework.security: WARN
+    com.example: INFO
+
+---
+# Configuration pour l'environnement DEV
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+server:
+  port: 8080
+
+# En DEV : endpoints Actuator pour le développement
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,beans,env,configprops
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.example: DEBUG
