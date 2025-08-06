@@ -20,6 +20,45 @@ spring:
 server:
   port: 8080
 
+# Configuration JEF Security
+jef:
+  security:
+    # Niveau de sécurité par défaut (s'applique à anyRequest())
+    default-security:
+      permit: false  # Par défaut, authentification requise
+      roles: []      # Pas de rôles spécifiques, juste authenticated()
+    
+    # Configuration spécifique par endpoint
+    endpoints:
+      # Endpoints publics
+      "/api/public/**":
+        permit: true
+        roles: []
+      
+      "/actuator/health":
+        permit: true
+        roles: []
+      
+      # Endpoints administrateurs
+      "/api/admin/**":
+        permit: false
+        roles: ["ADMIN"]
+      
+      # Endpoint critique nécessitant un rôle spécifique
+      "/api/admin/refresh-properties":
+        permit: false
+        roles: ["ADMIN", "SUPER_ADMIN"]
+      
+      # Endpoints utilisateur
+      "/api/user/**":
+        permit: false
+        roles: ["USER", "ADMIN"]
+      
+      # Endpoint de configuration (accessible aux admins et actuators)
+      "/api/security-config":
+        permit: false
+        roles: ["ADMIN", "ACTUATOR"]
+
 # Configuration Actuator par défaut
 management:
   endpoints:
@@ -47,7 +86,177 @@ spring:
 server:
   port: 8081
 
-# En UAT : tous les endpoints Actuator sont exposés (sécurité gérée par SecurityConfig)
+# Configuration JEF Security pour UAT - plus permissive
+jef:
+  security:
+    default-security:
+      permit: false  # Authentification requise par défaut
+      roles: []
+    
+    endpoints:
+      # Endpoints publics
+      "/api/public/**":
+        permit: true
+        roles: []
+      
+      # En UAT, certains endpoints admin peuvent être moins restrictifs
+      "/api/admin/**":
+        permit: false
+        roles: ["USER", "ADMIN", "TESTER"]  # Plus permissif en UAT
+      
+      "/api/admin/refresh-properties":
+        permit: false
+        roles: ["ADMIN", "TESTER"]  # Testeurs peuvent accéder en UAT
+      
+      "/api/user/**":
+        permit: false
+        roles: ["USER", "ADMIN", "TESTER"]
+      
+      "/api/security-config":
+        permit: true  # Public en UAT pour faciliter les tests
+        roles: []
+
+# En UAT : tous les endpoints Actuator sont exposés
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # Tous les endpoints
+  endpoint:
+    health:
+      show-details: always
+    shutdown:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.example: INFO
+
+---
+# Configuration pour l'environnement PROD
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:h2:mem:proddb
+
+server:
+  port: 8082
+
+# Configuration JEF Security pour PROD - plus stricte
+jef:
+  security:
+    default-security:
+      permit: false
+      roles: ["USER"]  # Par défaut, au moins ROLE_USER en production
+    
+    endpoints:
+      # Endpoints publics (minimal en production)
+      "/api/public/health":
+        permit: true
+        roles: []
+      
+      "/api/login":
+        permit: true
+        roles: []
+      
+      # Endpoints administrateurs - très restrictifs
+      "/api/admin/**":
+        permit: false
+        roles: ["ADMIN"]
+      
+      # Endpoint critique - rôle spécial requis
+      "/api/admin/refresh-properties":
+        permit: false
+        roles: ["SUPER_ADMIN"]  # Seuls les super admins
+      
+      # Endpoints utilisateur
+      "/api/user/**":
+        permit: false
+        roles: ["USER", "ADMIN"]
+      
+      # Configuration sécurisée
+      "/api/security-config":
+        permit: false
+        roles: ["ADMIN"]
+      
+      # Endpoint environnement accessible aux utilisateurs authentifiés
+      "/api/environment":
+        permit: false
+        roles: ["USER", "ADMIN", "ACTUATOR"]
+
+# En PROD : endpoints Actuator limités et sécurisés
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never  # Ne jamais montrer les détails en prod par défaut
+    shutdown:
+      enabled: false  # Désactivé en production
+
+logging:
+  level:
+    org.springframework.security: WARN
+    com.example: INFO
+
+---
+# Configuration pour l'environnement DEV
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+server:
+  port: 8080
+
+# Configuration JEF Security pour DEV - équilibrée
+jef:
+  security:
+    default-security:
+      permit: false
+      roles: []  # Juste authenticated() par défaut
+    
+    endpoints:
+      "/api/public/**":
+        permit: true
+        roles: []
+      
+      "/api/admin/**":
+        permit: false
+        roles: ["ADMIN"]
+      
+      "/api/admin/refresh-properties":
+        permit: false
+        roles: ["ADMIN"]  # Seuls les admins en dev
+      
+      "/api/user/**":
+        permit: false
+        roles: ["USER", "ADMIN"]
+      
+      "/api/security-config":
+        permit: false
+        roles: ["ADMIN"]
+
+# En DEV : endpoints Actuator pour le développement
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,beans,env,configprops
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.example: DEBUG)
 management:
   endpoints:
     web:

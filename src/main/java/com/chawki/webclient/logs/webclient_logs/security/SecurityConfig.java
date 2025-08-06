@@ -12,6 +12,9 @@ public class SecurityConfig {
  @Autowired
  private TokenAuthenticationProvider tokenAuthenticationProvider;
  
+ @Autowired
+ private JEFSecurityProperties jefSecurityProperties;
+ 
  @Value("${spring.profiles.active:dev}")
  private String activeProfile;
 
@@ -26,23 +29,22 @@ public class SecurityConfig {
  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
      http
          .authorizeHttpRequests(authz -> {
-             authz.requestMatchers("/api/public/**").permitAll();
+             // Configuration des endpoints spécifiques via la map
+             Map<String, JEFSecurityLevel> endpointSecurity = jefSecurityProperties.getEndpoints();
              
-             // Configuration des endpoints Actuator selon l'environnement
-             if ("uat".equalsIgnoreCase(activeProfile)) {
-                 // En UAT : tous les endpoints Actuator sont publics
-                 authz.requestMatchers("/actuator/**").permitAll();
-             } else if ("prod".equalsIgnoreCase(activeProfile)) {
-                 // En PROD : endpoints Actuator sécurisés par rôle ACTUATOR
-                 authz.requestMatchers("/actuator/health").permitAll() // Health toujours public
-                       .requestMatchers("/actuator/info").permitAll()   // Info toujours public
-                       .requestMatchers("/actuator/**").hasRole("ACTUATOR");
-             } else {
-                 // Autres environnements (dev, test) : accès restreint aux administrateurs
-                 authz.requestMatchers("/actuator/**").hasRole("ADMIN");
+             for (Map.Entry<String, JEFSecurityLevel> entry : endpointSecurity.entrySet()) {
+                 String endpoint = entry.getKey();
+                 JEFSecurityLevel securityLevel = entry.getValue();
+                 
+                 configureEndpointSecurity(authz, endpoint, securityLevel);
              }
              
-             authz.anyRequest().authenticated();
+             // Configuration des endpoints Actuator selon l'environnement
+             configureActuatorSecurity(authz);
+             
+             // Application du niveau de sécurité par défaut sur anyRequest
+             JEFSecurityLevel defaultSecurity = jefSecurityProperties.getDefaultSecurity();
+             configureDefaultSecurity(authz, defaultSecurity);
          })
          .authenticationManager(authenticationManager())
          .addFilterBefore(new TokenAuthenticationFilter(authenticationManager()), 
@@ -53,8 +55,253 @@ public class SecurityConfig {
 
      return http.build();
  }
+ 
+ private void configureEndpointSecurity(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authz, 
+                                      String endpoint, JEFSecurityLevel securityLevel) {
+     if (securityLevel.isPermit()) {
+         authz.requestMatchers(endpoint).permitAll();
+     } else if (securityLevel.getRoles().isEmpty()) {
+         // Si permit = false et roles = empty, alors authenticated()
+         authz.requestMatchers(endpoint).authenticated();
+     } else {
+         // Appliquer les rôles spécifiques
+         String[] roles = securityLevel.getRoles().toArray(new String[0]);
+         authz.requestMatchers(endpoint).hasAnyRole(extractRoleNames(roles));
+     }
+ }
+ 
+ private void configureActuatorSecurity(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authz) {
+     if ("uat".equalsIgnoreCase(activeProfile)) {
+         // En UAT : tous les endpoints Actuator sont publics
+         authz.requestMatchers("/actuator/**").permitAll();
+     } else if ("prod".equalsIgnoreCase(activeProfile)) {
+         // En PROD : endpoints Actuator sécurisés par rôle ACTUATOR
+         authz.requestMatchers("/actuator/health").permitAll()
+               .requestMatchers("/actuator/info").permitAll()
+               .requestMatchers("/actuator/**").hasRole("ACTUATOR");
+     } else {
+         // Autres environnements (dev, test) : accès restreint aux administrateurs
+         authz.requestMatchers("/actuator/**").hasRole("ADMIN");
+     }
+ }
+ 
+ private void configureDefaultSecurity(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authz, 
+                                     JEFSecurityLevel defaultSecurity) {
+     if (defaultSecurity.isPermit()) {
+         authz.anyRequest().permitAll();
+     } else if (defaultSecurity.getRoles().isEmpty()) {
+         // Si permit = false et roles = empty, alors authenticated()
+         authz.anyRequest().authenticated();
+     } else {
+         // Appliquer les rôles par défaut
+         String[] roles = defaultSecurity.getRoles().toArray(new String[0]);
+         authz.anyRequest().hasAnyRole(extractRoleNames(roles));
+     }
+ }
+ 
+ private String[] extractRoleNames(String[] roles) {
+     // Supprimer le préfixe ROLE_ si présent pour éviter la double préfixation
+     return Arrays.stream(roles)
+             .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
+             .toArray(String[]::new);
+ }
 }
 
+//JEFSecurityLevel - Classe pour définir les niveaux de sécurité
+public class JEFSecurityLevel {
+ 
+ private boolean permit = false;
+ private List<String> roles = new ArrayList<>();
+ 
+ // Constructeurs
+ public JEFSecurityLevel() {}
+ 
+ public JEFSecurityLevel(boolean permit, List<String> roles) {
+     this.permit = permit;
+     this.roles = roles != null ? new ArrayList<>(roles) : new ArrayList<>();
+ }
+ 
+ // Factory methods pour faciliter la création
+ public static JEFSecurityLevel permitAll() {
+     return new JEFSecurityLevel(true, Collections.emptyList());
+ }
+ 
+ public static JEFSecurityLevel authenticated() {
+     return new JEFSecurityLevel(false, Collections.emptyList());
+ }
+ 
+ public static JEFSecurityLevel hasRole(String role) {
+     return new JEFSecurityLevel(false, Collections.singletonList(role));
+ }
+ 
+ public static JEFSecurityLevel hasAnyRole(String... roles) {
+     return new JEFSecurityLevel(false, Arrays.asList(roles));
+ }
+ 
+ // Getters et Setters
+ public boolean isPermit() {
+     return permit;
+ }
+ 
+ public void setPermit(boolean permit) {
+     this.permit = permit;
+ }
+ 
+ public List<String> getRoles() {
+     return roles;
+ }
+ 
+ public void setRoles(List<String> roles) {
+     this.roles = roles != null ? new ArrayList<>(roles) : new ArrayList<>();
+ }
+ 
+ // Méthodes utilitaires
+ public boolean requiresAuthentication() {
+     return !permit;
+ }
+ 
+ public boolean hasSpecificRoles() {
+     return !permit && !roles.isEmpty();
+ }
+ 
+ public boolean isPublic() {
+     return permit;
+ }
+ 
+ @Override
+ public String toString() {
+     if (permit) {
+         return "JEFSecurityLevel{permit=true}";
+     } else if (roles.isEmpty()) {
+         return "JEFSecurityLevel{authenticated=true}";
+     } else {
+         return "JEFSecurityLevel{roles=" + roles + "}";
+     }
+ }
+ 
+ @Override
+ public boolean equals(Object o) {
+     if (this == o) return true;
+     if (o == null || getClass() != o.getClass()) return false;
+     JEFSecurityLevel that = (JEFSecurityLevel) o;
+     return permit == that.permit && Objects.equals(roles, that.roles);
+ }
+ 
+ @Override
+ public int hashCode() {
+     return Objects.hash(permit, roles);
+ }
+}
+
+//JEFSecurityProperties - Configuration properties pour la sécurité
+@ConfigurationProperties(prefix = "jef.security")
+@Component
+@Data
+@Slf4j
+public class JEFSecurityProperties {
+ 
+ /**
+  * Niveau de sécurité par défaut appliqué à anyRequest()
+  */
+ private JEFSecurityLevel defaultSecurity = JEFSecurityLevel.authenticated();
+ 
+ /**
+  * Configuration de sécurité par endpoint
+  * Clé: pattern d'endpoint (ex: "/api/admin/**")
+  * Valeur: niveau de sécurité à appliquer
+  */
+ private Map<String, JEFSecurityLevel> endpoints = new HashMap<>();
+ 
+ /**
+  * Initialisation post-construction pour valider la configuration
+  */
+ @PostConstruct
+ public void init() {
+     log.info("=== JEF SECURITY CONFIGURATION ===");
+     log.info("Default Security: {}", defaultSecurity);
+     log.info("Endpoint Specific Security:");
+     
+     endpoints.forEach((endpoint, security) -> {
+         log.info("  {} -> {}", endpoint, security);
+     });
+     
+     // Validation de la configuration
+     validateConfiguration();
+     log.info("===================================");
+ }
+ 
+ private void validateConfiguration() {
+     // Valider le niveau de sécurité par défaut
+     if (defaultSecurity == null) {
+         log.warn("Default security is null, setting to authenticated()");
+         defaultSecurity = JEFSecurityLevel.authenticated();
+     }
+     
+     // Valider les configurations d'endpoints
+     endpoints.entrySet().removeIf(entry -> {
+         if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
+             log.warn("Removing endpoint with null or empty pattern");
+             return true;
+         }
+         if (entry.getValue() == null) {
+             log.warn("Removing endpoint '{}' with null security level", entry.getKey());
+             return true;
+         }
+         return false;
+     });
+     
+     // Ajouter des configurations par défaut si elles n'existent pas
+     addDefaultEndpointIfNotExists("/api/public/**", JEFSecurityLevel.permitAll());
+ }
+ 
+ private void addDefaultEndpointIfNotExists(String endpoint, JEFSecurityLevel security) {
+     if (!endpoints.containsKey(endpoint)) {
+         endpoints.put(endpoint, security);
+         log.info("Added default endpoint configuration: {} -> {}", endpoint, security);
+     }
+ }
+ 
+ /**
+  * Obtenir le niveau de sécurité pour un endpoint spécifique
+  */
+ public JEFSecurityLevel getSecurityLevelForEndpoint(String endpoint) {
+     return endpoints.getOrDefault(endpoint, defaultSecurity);
+ }
+ 
+ /**
+  * Ajouter ou mettre à jour la sécurité d'un endpoint
+  */
+ public void setEndpointSecurity(String endpoint, JEFSecurityLevel security) {
+     if (endpoint != null && !endpoint.trim().isEmpty() && security != null) {
+         endpoints.put(endpoint, security);
+         log.info("Updated endpoint security: {} -> {}", endpoint, security);
+     }
+ }
+ 
+ /**
+  * Supprimer la configuration de sécurité d'un endpoint
+  */
+ public void removeEndpointSecurity(String endpoint) {
+     JEFSecurityLevel removed = endpoints.remove(endpoint);
+     if (removed != null) {
+         log.info("Removed endpoint security: {} (was: {})", endpoint, removed);
+     }
+ }
+ 
+ /**
+  * Obtenir tous les endpoints configurés
+  */
+ public Set<String> getConfiguredEndpoints() {
+     return new HashSet<>(endpoints.keySet());
+ }
+ 
+ /**
+  * Vérifier si un endpoint a une configuration spécifique
+  */
+ public boolean hasEndpointConfiguration(String endpoint) {
+     return endpoints.containsKey(endpoint);
+ }
+}
 //2. AuthenticationManager personnalisé
 @Component
 public class MultiProviderAuthenticationManager implements AuthenticationManager {
@@ -301,7 +548,7 @@ public class CustomUserDetailsService implements UserDetailsService {
          return User.builder()
                  .username("admin")
                  .password(passwordEncoder.encode("admin123"))
-                 .authorities("ROLE_ADMIN", "ROLE_ACTUATOR")
+                 .authorities("ROLE_ADMIN", "ROLE_ACTUATOR", "ROLE_USER", "ROLE_SUPER_ADMIN")
                  .build();
      } else if ("user".equals(username)) {
          return User.builder()
@@ -314,6 +561,18 @@ public class CustomUserDetailsService implements UserDetailsService {
                  .username("actuator")
                  .password(passwordEncoder.encode("actuator123"))
                  .authorities("ROLE_ACTUATOR")
+                 .build();
+     } else if ("tester".equals(username)) {
+         return User.builder()
+                 .username("tester")
+                 .password(passwordEncoder.encode("tester123"))
+                 .authorities("ROLE_TESTER", "ROLE_USER")
+                 .build();
+     } else if ("superadmin".equals(username)) {
+         return User.builder()
+                 .username("superadmin")
+                 .password(passwordEncoder.encode("super123"))
+                 .authorities("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_ACTUATOR", "ROLE_USER")
                  .build();
      } else {
          throw new UsernameNotFoundException("User not found: " + username);
@@ -339,16 +598,15 @@ public class AuthTestController {
  @Autowired
  private JwtTokenService jwtTokenService;
  
+ @Autowired
+ private JEFSecurityProperties jefSecurityProperties;
+ 
  @Value("${spring.profiles.active:dev}")
  private String activeProfile;
  
  @PostMapping("/login")
  public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest loginRequest) {
-     // Ce endpoint pourrait utiliser l'AuthenticationManager pour valider les credentials
-     // et retourner un token JWT
-     
      try {
-         // Simuler la validation (en production, utilisez l'AuthenticationManager)
          Map<String, String> validUsers = Map.of(
              "admin", "admin123",
              "user", "user123",
@@ -389,12 +647,50 @@ public class AuthTestController {
      return ResponseEntity.ok(response);
  }
  
- @GetMapping("/environment")
- public ResponseEntity<Map<String, String>> getEnvironmentInfo(Authentication authentication) {
+ @GetMapping("/admin/users")
+ public ResponseEntity<Map<String, Object>> adminEndpoint(Authentication authentication) {
+     Map<String, Object> response = new HashMap<>();
+     response.put("message", "Admin endpoint accessed by: " + authentication.getName());
+     response.put("users", List.of("admin", "user", "actuator"));
+     response.put("environment", activeProfile);
+     return ResponseEntity.ok(response);
+ }
+ 
+ @PostMapping("/admin/refresh-properties")
+ public ResponseEntity<Map<String, String>> refreshProperties(Authentication authentication) {
      Map<String, String> response = new HashMap<>();
+     response.put("message", "Properties refreshed by: " + authentication.getName());
+     response.put("timestamp", Instant.now().toString());
+     response.put("status", "SUCCESS");
+     return ResponseEntity.ok(response);
+ }
+ 
+ @GetMapping("/user/profile")
+ public ResponseEntity<Map<String, Object>> userProfile(Authentication authentication) {
+     Map<String, Object> response = new HashMap<>();
+     response.put("username", authentication.getName());
+     response.put("authorities", authentication.getAuthorities());
+     response.put("environment", activeProfile);
+     return ResponseEntity.ok(response);
+ }
+ 
+ @GetMapping("/environment")
+ public ResponseEntity<Map<String, Object>> getEnvironmentInfo(Authentication authentication) {
+     Map<String, Object> response = new HashMap<>();
      response.put("activeProfile", activeProfile);
      response.put("user", authentication.getName());
      response.put("actuatorAccess", getActuatorAccessInfo());
+     response.put("jefSecurityConfig", getJEFSecurityInfo());
+     return ResponseEntity.ok(response);
+ }
+ 
+ @GetMapping("/security-config")
+ public ResponseEntity<Map<String, Object>> getSecurityConfig(Authentication authentication) {
+     Map<String, Object> response = new HashMap<>();
+     response.put("defaultSecurity", jefSecurityProperties.getDefaultSecurity());
+     response.put("endpoints", jefSecurityProperties.getEndpoints());
+     response.put("configuredEndpoints", jefSecurityProperties.getConfiguredEndpoints());
+     response.put("requestedBy", authentication.getName());
      return ResponseEntity.ok(response);
  }
  
@@ -404,6 +700,14 @@ public class AuthTestController {
          case "prod" -> "Actuator endpoints require ROLE_ACTUATOR (except /health and /info)";
          default -> "Actuator endpoints require ROLE_ADMIN";
      };
+ }
+ 
+ private Map<String, Object> getJEFSecurityInfo() {
+     Map<String, Object> info = new HashMap<>();
+     info.put("defaultSecurity", jefSecurityProperties.getDefaultSecurity().toString());
+     info.put("endpointCount", jefSecurityProperties.getEndpoints().size());
+     info.put("configuredEndpoints", jefSecurityProperties.getConfiguredEndpoints());
+     return info;
  }
 }
 
