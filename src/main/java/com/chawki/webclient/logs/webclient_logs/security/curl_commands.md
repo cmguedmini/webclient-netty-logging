@@ -36,6 +36,7 @@ curl -X GET http://localhost:8080/api/public/health \
 ```
 
 **Résultat attendu :** 
+
 - Status: `200 OK`
 - Réponse JSON avec le statut de santé
 - Aucune authentification requise
