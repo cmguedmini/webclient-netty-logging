@@ -1,0 +1,38 @@
+# Configuration pour désactiver les composants web de Spring Security
+spring:
+  # Désactive la configuration automatique de Spring MVC
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration
+      - org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration
+      - org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
+  
+  # Application en mode batch (non web)
+  main:
+    web-application-type: none # Force le mode non-web
+  # Configuration Spring Batch
+    job:
+      enabled: false # Désactive l'exécution automatique des jobs au démarrage
+    initialize-schema: embedded # ou 'always' selon vos besoins
+  
+  # Configuration de sécurité pour application non-web
+  security:
+    # Désactive complètement la sécurité web
+    enabled: false
+    # Désactive l'auto-configuration des filtres
+    filter:
+      dispatcher-types: async, error, request, forward, include
+
+# Pas d'Actuator dans cette application
+
+# Pas de serveur web requis pour l'application batch
+server:
+  port: -1 # Désactive complètement le serveur web embarqué
+
+# Configuration de logging pour debug (optionnel)
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.  batch: INFO
