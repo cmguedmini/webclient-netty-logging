@@ -1,0 +1,116 @@
+app:
+  security:
+    actuator:
+      # Configuration globale par environnement
+      environments:
+        DEVELOP:
+          default-authenticated: false
+          default-roles: []
+        QA:
+          default-authenticated: true
+          default-roles: ["ROLE_QA_USER"]
+        PROD:
+          default-authenticated: true
+          default-roles: ["ROLE_ADMIN"]
+      
+      # Configuration détaillée des endpoints
+      endpoints:
+        - url: "/actuator/health"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: false
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_ADMIN"]
+            QA:
+              rules:
+                - methods: ["GET"]
+                  authenticated: false
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_QA_ADMIN"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_MONITORING"]
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_ADMIN"]
+        
+        - url: "/actuator/info"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: false
+            QA:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_QA_USER"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_USER", "ROLE_ADMIN"]
+        
+        - url: "/actuator/beans"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_DEVELOPER"]
+            QA:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_QA_ADMIN"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ADMIN"]
+        
+        - url: "/actuator/metrics/**"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: false
+            QA:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_QA_USER", "ROLE_QA_ADMIN"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_MONITORING", "ROLE_ADMIN"]
+        
+        - url: "/actuator/shutdown"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_DEVELOPER"]
+            QA:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_QA_ADMIN"]
+            PROD:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_ADMIN"]
+
+# Configuration Spring active profile
+spring:
+  profiles:
+    active: ${ENVIRONMENT:DEVELOP}
