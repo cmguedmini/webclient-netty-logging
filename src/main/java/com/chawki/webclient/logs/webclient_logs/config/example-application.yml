@@ -1,0 +1,99 @@
+endpoints:
+        - url: "/actuator/health"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_LECTURE"]
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_ECRITURE"]
+            TEST:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_LECTURE"]
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_ECRITURE"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_LECTURE", "ROLE_ACTUATOR_INFRA"]
+                - methods: ["POST", "PUT", "DELETE"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_ECRITURE", "ROLE_ACTUATOR_ADMIN"]
+
+        - url: "/actuator/info"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_LECTURE"]
+            TEST:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_LECTURE"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_LECTURE"]
+
+        - url: "/actuator/beans"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_LECTURE"]
+            TEST:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_LECTURE"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_LECTURE", "ROLE_ACTUATOR_ADMIN"]
+
+        - url: "/actuator/metrics/**"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_LECTURE"]
+            TEST:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_LECTURE"]
+            PROD:
+              rules:
+                - methods: ["GET"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_LECTURE", "ROLE_ACTUATOR_INFRA"]
+
+        - url: "/actuator/shutdown"
+          environments:
+            DEVELOP:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_DEV_ECRITURE", "ROLE_ACTUATOR_ADMIN"]
+            TEST:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_TEST_ECRITURE", "ROLE_ACTUATOR_ADMIN"]
+            PROD:
+              rules:
+                - methods: ["POST"]
+                  authenticated: true
+                  roles: ["ROLE_ACTUATOR_PROD_ECRITURE", "ROLE_ACTUATOR_ADMIN"]
