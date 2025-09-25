@@ -13,3 +13,14 @@
 {{/.}}
 })
 {{/tags}}
+
+# Add maxLength & type to @Parameter
+
+{{#allParams}}
+    @Parameter(
+        name = "{{paramName}}"{{#description}},
+        description = "{{description}}"{{/description}}{{#required}},
+        required = true{{/required}},
+        schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})
+    ) {{dataType}} {{paramName}}{{#hasMore}},{{/hasMore}}
+{{/allParams}}
