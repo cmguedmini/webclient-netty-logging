@@ -24,3 +24,13 @@
         schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})
     ) {{dataType}} {{paramName}}{{#hasMore}},{{/hasMore}}
 {{/allParams}}
+
+# Une autre version Param
+({{#parameters}}
+    {{#isQueryParam}}@Parameter(name = "{{paramName}}", in = ParameterIn.QUERY{{#description}}, description = "{{description}}"{{/description}}{{#required}}, required = true{{/required}}, schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})) {{>queryParams}}{{/isQueryParam}}
+    {{#isPathParam}}@Parameter(name = "{{paramName}}", in = ParameterIn.PATH{{#description}}, description = "{{description}}"{{/description}}, required = true, schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})) {{>pathParams}}{{/isPathParam}}
+    {{#isHeaderParam}}@Parameter(name = "{{paramName}}", in = ParameterIn.HEADER{{#description}}, description = "{{description}}"{{/description}}{{#required}}, required = true{{/required}}, schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})) {{>headerParams}}{{/isHeaderParam}}
+    {{#isCookieParam}}@Parameter(name = "{{paramName}}", in = ParameterIn.COOKIE{{#description}}, description = "{{description}}"{{/description}}{{#required}}, required = true{{/required}}, schema = @Schema({{#maxLength}}maxLength = {{.}}{{#dataType}}, {{/dataType}}{{/maxLength}}{{#dataType}}type = "{{.}}"{{/dataType}})) {{>cookieParams}}{{/isCookieParam}}
+    {{#isBodyParam}}{{>bodyParams}}{{/isBodyParam}}
+    {{#isFormParam}}{{>formParams}}{{/isFormParam}}{{#hasMore}}, {{/hasMore}}
+{{/parameters}})
