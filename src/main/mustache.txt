@@ -1,0 +1,15 @@
+# Add Tags
+{{#tags}}
+@Tags({
+{{#.}}
+    @Tag(
+        name = "{{name}}"{{#description}},
+        description = "{{description}}"{{/description}}{{#externalDocs}},
+        externalDocs = @ExternalDocumentation(
+            description = "{{description}}",
+            url = "{{url}}"
+        ){{/externalDocs}}
+    ){{#hasMore}},{{/hasMore}}
+{{/.}}
+})
+{{/tags}}
