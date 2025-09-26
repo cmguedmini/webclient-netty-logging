@@ -22,6 +22,67 @@ New option :
 @Tag(name = "{{classname}}")
 {{/baseName}}
 
+## Option 1 :
+{{#apiInfo}}
+{{#apis}}
+{{#-first}}
+{{#operations}}
+{{#operation}}
+{{#-first}}
+{{#tags}}
+{{#-first}}
+@Tag(
+    name = "{{name}}"{{#description}},
+    description = "{{description}}"{{/description}}{{#externalDocs}},
+    externalDocs = @ExternalDocumentation(
+        description = "{{description}}",
+        url = "{{url}}"
+    ){{/externalDocs}}
+)
+{{/-first}}
+{{/tags}}
+{{/-first}}
+{{/operation}}
+{{/operations}}
+{{/-first}}
+{{/apis}}
+{{/apiInfo}}
+
+## Option 2 :
+{{#swagger-yaml}}
+{{#tags}}
+{{#-first}}
+@Tag(
+    name = "{{name}}"{{#description}},
+    description = "{{description}}"{{/description}}{{#externalDocs}},
+    externalDocs = @ExternalDocumentation(
+        description = "{{description}}",
+        url = "{{url}}"
+    ){{/externalDocs}}
+)
+{{/-first}}
+{{/tags}}
+{{/swagger-yaml}}
+
+## Option 3 :
+{{#appName}}
+{{#info}}
+{{#tags}}
+{{#-first}}
+@Tag(
+    name = "{{name}}"{{#description}},
+    description = "{{description}}"{{/description}}{{#externalDocs}},
+    externalDocs = @ExternalDocumentation(
+        description = "{{description}}",
+        url = "{{url}}"
+    ){{/externalDocs}}
+)
+{{/-first}}
+{{/tags}}
+{{/info}}
+{{/appName}}
+
+
 # Add maxLength & type to @Parameter
 
 {{#allParams}}
