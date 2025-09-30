@@ -76,10 +76,19 @@ class SslPropertiesTest {
 
         Set<ConstraintViolation<SslProperties>> violations = validator.validate(props);
 
-        // SANS @Valid sur la List : ce test ÉCHOUERA (violations sera vide)
-        // AVEC @Valid sur la List : ce test PASSERA (détecte le null à l'index 1)
-        assertFalse(violations.isEmpty(), 
-            "List with null element should be rejected - @Valid annotation is required on the List field!");
+        // Afficher les violations pour debugging
+        System.out.println("\n=== TEST: shouldRejectNullElementInSslProtocols ===");
+        System.out.println("Nombre de violations détectées: " + violations.size());
+        violations.forEach(v -> 
+            System.out.println("  - Violation: " + v.getPropertyPath() + " = " + v.getMessage())
+        );
+        
+        if (violations.isEmpty()) {
+            fail("ATTENTION: Aucune violation détectée!\n" +
+                 "Cela peut arriver avec Hibernate Validator 6.1+ qui valide automatiquement.\n" +
+                 "Cependant, l'erreur HV000187 dans Spring Boot prouve que @Valid EST REQUIS.\n" +
+                 "Vérifiez la version d'Hibernate Validator et la configuration Spring Boot.");
+        }
         
         // Vérifier que la violation concerne bien un élément de la liste
         boolean hasListElementViolation = violations.stream()
@@ -87,11 +96,25 @@ class SslPropertiesTest {
         
         assertTrue(hasListElementViolation, 
             "Should have violation on list element (e.g., 'sslProtocols[1]')");
+    }
+    
+    @Test
+    void verifyValidatorConfiguration() {
+        // Test pour vérifier la configuration du validator
+        System.out.println("\n=== Configuration du Validator ===");
+        System.out.println("ValidatorFactory: " + validatorFactory.getClass().getName());
+        System.out.println("Validator: " + validator.getClass().getName());
         
-        // Afficher les violations pour debugging
-        violations.forEach(v -> 
-            System.out.println("Violation: " + v.getPropertyPath() + " = " + v.getMessage())
-        );
+        // Teste si le validator détecte les annotations de type
+        SslProperties props = new SslProperties();
+        props.setSslProtocols(Arrays.asList("TLSv1.3", null));
+        
+        Set<ConstraintViolation<SslProperties>> violations = validator.validate(props);
+        
+        System.out.println("Validation automatique des éléments: " + 
+            (violations.stream().anyMatch(v -> v.getPropertyPath().toString().contains("[")) 
+                ? "ACTIVÉE (Hibernate Validator 6.1+)" 
+                : "DÉSACTIVÉE (nécessite @Valid explicite)"));
     }
 
     @Test
