@@ -1,0 +1,180 @@
+# Configuration de la sécurité des endpoints Actuator
+app:
+  security:
+    actuator:
+      # Configuration par défaut pour tous les endpoints non configurés
+      default:
+        authenticated: true
+        roles: ["ADMIN"]
+      
+      # Configuration détaillée des endpoints avec méthodes HTTP
+      endpoints:
+        # Endpoint Health - GET public, modifications réservées aux admins
+        - url: "/actuator/health"
+          rules:
+            - methods: ["GET"]
+              authenticated: false
+            - methods: ["POST", "PUT", "DELETE"]
+              authenticated: true
+              roles: ["ADMIN"]
+        
+        # Endpoint Info - accès public en lecture
+        - url: "/actuator/info"
+          rules:
+            - methods: ["GET"]
+              authenticated: false
+        
+        # Endpoint Beans - réservé aux admins et développeurs
+        - url: "/actuator/beans"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["ADMIN", "DEVELOPER"]
+        
+        # Endpoint Metrics - accès pour monitoring et admins (avec wildcard)
+        - url: "/actuator/metrics/**"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["MONITORING", "ADMIN"]
+        
+        # Endpoint Env - consultation et modification par admins
+        - url: "/actuator/env"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["ADMIN"]
+            - methods: ["POST", "DELETE"]
+              authenticated: true
+              roles: ["ADMIN"]
+        
+        # Endpoint Loggers - lecture par admins/devs, modification par admins
+        - url: "/actuator/loggers"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["ADMIN", "DEVELOPER"]
+            - methods: ["POST"]
+              authenticated: true
+              roles: ["ADMIN"]
+        
+        # Endpoint Shutdown - réservé strictement aux admins
+        - url: "/actuator/shutdown"
+          rules:
+            - methods: ["POST"]
+              authenticated: true
+              roles: ["ADMIN"]
+        
+        # Endpoint ThreadDump - diagnostic réservé aux admins
+        - url: "/actuator/threaddump"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["ADMIN"]
+        
+        # Endpoint HeapDump - diagnostic réservé aux admins
+        - url: "/actuator/heapdump"
+          rules:
+            - methods: ["GET"]
+              authenticated: true
+              roles: ["ADMIN"]
+
+# Configuration Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        # Endpoints exposés (liste blanche)
+        include: health,info,metrics,beans,env,loggers,threaddump
+        # Base path des endpoints actuator
+        base-path: /actuator
+  endpoint:
+    health:
+      # Afficher les détails uniquement si authentifié
+      show-details: when-authorized
+      # Afficher les composants
+      show-components: when-authorized
+    shutdown:
+      # Désactiver shutdown par défaut (activer uniquement si nécessaire)
+      enabled: false
+  
+  # Configuration des métriques
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Configuration Spring Security (exemple)
+spring:
+  security:
+    user:
+      # Utilisateur par défaut (à remplacer par une vraie configuration)
+      name: admin
+      password: admin
+      roles: ADMIN
+
+# Configuration des logs
+logging:
+  level:
+    # Logs de la sécurité actuator
+    com.yourcompany.security.actuator: INFO
+    # Logs Spring Security
+    org.springframework.security: WARN
+    # Logs Spring Boot Actuator
+    org.springframework.boot.actuate: INFO
+
+# Mode debug de la configuration (désactiver en production)
+app:
+  security:
+    actuator:
+      debug: false
+
+---
+# Profil de développement
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+app:
+  security:
+    actuator:
+      debug: true
+
+logging:
+  level:
+    com.yourcompany.security.actuator: DEBUG
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+---
+# Profil de production
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+app:
+  security:
+    actuator:
+      debug: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Limiter les endpoints en production
+        include: health,info,metrics
+  endpoint:
+    shutdown:
+      enabled: false
+
+logging:
+  level:
+    com.yourcompany.security.actuator: WARN
+    org.springframework.security: ERROR
