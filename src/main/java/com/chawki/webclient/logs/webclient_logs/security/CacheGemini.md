@@ -117,3 +117,22 @@ public class DnsHostNameCacheIntegrationTest {
         }
     }
 }
+
+______________________
+// 1. Méthode publique exposée (gère le type Optional)
+public Optional<String> getOptionalData(String key) {
+    String cachedValue = this.getDataInternal(key);
+    // Si la valeur est null, elle n'a pas été trouvée, même par Spring Cache
+    return Optional.ofNullable(cachedValue); 
+}
+
+// 2. Méthode interne annotée (ne retourne que le type simple)
+@Cacheable(value = "myCache", unless = "#result == null") 
+protected String getDataInternal(String key) {
+    // Si la valeur n'est pas trouvée (par exemple, dans la BDD), retournez null.
+    // Spring mettra en cache le 'null' comme un NullValue (si configured) ou ne mettra rien.
+    String result = dependency.fetch(key); 
+    
+    // Si la valeur est trouvée, retournez la String
+    return result; 
+}
