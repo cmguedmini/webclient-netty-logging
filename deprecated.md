@@ -82,6 +82,7 @@ public class DeprecatedPropertiesLogger implements EnvironmentPostProcessor, Ord
 }
 
 --------------------
+``
 deprecated:
   guide: "https://ton-site.com/guide-migration"
   properties:
@@ -90,6 +91,7 @@ deprecated:
   wildcards:
     - app.code.*
     - legacy.feature.*
+``
 ----------------------------------
 Déclaration dans spring.factories
 Assure-toi que ce fichier existe :
