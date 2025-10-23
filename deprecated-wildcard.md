@@ -194,4 +194,48 @@ class DeprecatedPropertiesValidatorTest {
         ArgumentCaptor<ILoggingEvent> captor = ArgumentCaptor.forClass(ILoggingEvent.class);
         verify(mockAppender, never()).doAppend(captor.capture());
     }
+
+    @Test
+void shouldLogWarningForDeprecatedProperty() {
+    // Préparer le logger
+    Logger logger = (Logger) LoggerFactory.getLogger(DeprecatedPropertiesValidator.class);
+    Appender<ILoggingEvent> mockAppender = mock(Appender.class);
+    when(mockAppender.getName()).thenReturn("MOCK");
+    logger.addAppender(mockAppender);
+    logger.setLevel(Level.WARN);
+
+    // Simuler l'environnement avec une propriété dépréciée
+    ConfigurableEnvironment environment = mock(ConfigurableEnvironment.class);
+    Map<String, Object> properties = Map.of("app.old-property", "true");
+    MapPropertySource propertySource = new MapPropertySource("test", properties);
+    when(environment.getPropertySources()).thenReturn(new org.springframework.core.env.MutablePropertySources());
+    environment.getPropertySources().addLast(propertySource);
+    when(environment.containsProperty("app.old-property")).thenReturn(true);
+    when(environment.getProperty("app.old-property")).thenReturn("true");
+
+    // Mock du config loader avec une propriété dépréciée
+    DeprecatedPropertiesConfigLoader configLoader = mock(DeprecatedPropertiesConfigLoader.class);
+    when(configLoader.getDeprecatedKeys()).thenReturn(List.of("app.old-property"));
+    when(configLoader.getDeprecatedWildcards()).thenReturn(List.of());
+    when(configLoader.getGuideUrl()).thenReturn("https://ton-site.com/guide-migration");
+
+    // Instancier le validator
+    DeprecatedPropertiesValidator validator = new DeprecatedPropertiesValidator(environment, configLoader);
+    validator.afterSingletonsInstantiated();
+
+    // Capturer les logs
+    ArgumentCaptor<ILoggingEvent> captor = ArgumentCaptor.forClass(ILoggingEvent.class);
+    verify(mockAppender, atLeastOnce()).doAppend(captor.capture());
+
+    List<ILoggingEvent> logs = captor.getAllValues();
+
+    // Vérifier que le message de warning est bien généré
+    boolean found = logs.stream().anyMatch(log ->
+        log.getLevel() == Level.WARN &&
+        log.getFormattedMessage().contains("app.old-property") &&
+        log.getFormattedMessage().contains("guide de migration")
+    );
+
+    assertTrue(found, "Le message de warning pour 'app.old-property' n’a pas été détecté.");
+}
 }
