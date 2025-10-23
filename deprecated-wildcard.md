@@ -1,3 +1,45 @@
+package com.example.config;
+
+import org.springframework.core.io.ClassPathResource;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
+
+public class DeprecatedPropertiesConfigLoader {
+
+    public List<String> getDeprecatedKeys() {
+        return parseList(load().getProperty("deprecated.keys"));
+    }
+
+    public List<String> getDeprecatedWildcards() {
+        return parseList(load().getProperty("deprecated.wildcards"));
+    }
+
+    public String getGuideUrl() {
+        return load().getProperty("deprecated.guide", "https://default-guide.com");
+    }
+
+    private Properties load() {
+        Properties props = new Properties();
+        try {
+            props.load(new ClassPathResource("deprecated.properties").getInputStream());
+        } catch (IOException e) {
+            // Log or handle error as needed
+        }
+        return props;
+    }
+
+    private List<String> parseList(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+}
+------
 @Component
 public class DeprecatedPropertiesValidator implements SmartInitializingSingleton {
 
