@@ -41,6 +41,7 @@ public class DeprecatedPropertiesConfigLoader {
 }
 ------
 @Component
+@Import(DeprecatedPropertiesConfiguration.class)
 public class DeprecatedPropertiesValidator implements SmartInitializingSingleton {
 
     private static final Logger logger = LoggerFactory.getLogger(DeprecatedPropertiesValidator.class);
@@ -87,44 +88,110 @@ public class DeprecatedPropertiesValidator implements SmartInitializingSingleton
     }
 }
 ----
-@Test
-void shouldLogWarningsForWildcardProperties() {
-    // Mock du logger
-    Logger logger = (Logger) LoggerFactory.getLogger(DeprecatedPropertiesValidator.class);
-    Appender<ILoggingEvent> mockAppender = mock(Appender.class);
-    when(mockAppender.getName()).thenReturn("MOCK");
-    logger.addAppender(mockAppender);
-    logger.setLevel(Level.WARN);
+package com.example.config;
 
-    // Mock de l'environnement
-    ConfigurableEnvironment environment = mock(ConfigurableEnvironment.class);
-    Map<String, Object> properties = Map.of(
-        "jef.core.timeout", "5000",
-        "code.log.test", "true"
-    );
-    MapPropertySource propertySource = new MapPropertySource("test", properties);
-    when(environment.getPropertySources()).thenReturn(new org.springframework.core.env.MutablePropertySources());
-    environment.getPropertySources().addLast(propertySource);
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-    for (String key : properties.keySet()) {
-        when(environment.containsProperty(key)).thenReturn(true);
-        when(environment.getProperty(key)).thenReturn(properties.get(key).toString());
+@Configuration
+public class DeprecatedPropertiesConfiguration {
+
+    @Bean
+    public DeprecatedPropertiesConfigLoader deprecatedPropertiesConfigLoader() {
+        return new DeprecatedPropertiesConfigLoader();
+    }
+}
+----
+package com.example.config;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class DeprecatedPropertiesValidatorTest {
+
+    Logger logger;
+    private Appender<ILoggingEvent> mockAppender;
+
+    @BeforeEach
+    void setupLogger() {
+        logger = (Logger) org.slf4j.LoggerFactory.getLogger(DeprecatedPropertiesValidator.class);
+        mockAppender = mock(Appender.class);
+        when(mockAppender.getNameExactProperties() {
+        // Mock de l'environnement
+        ConfigurableEnvironment environment = mock(ConfigurableEnvironment.class);
+        Map<String, Object> properties = Map.of(
+            "app.old-property", "true",
+            "jef.core.timeout", "5000",
+            "code.log.test", "true",
+            "app.valid.property", "ok"
+        );
+        MapPropertySource propertySource = new MapPropertySource("test", properties);
+        when(environment.getPropertySources()).thenReturn(new org.springframework.core.env.MutablePropertySources());
+        environment.getPropertySources().addLast(propertySource);
+
+        for (String key : properties.keySet()) {
+            when(environment.containsProperty(key)).thenReturn(true);
+            when(environment.getProperty(key)).thenReturn(properties.get(key).toString());
+        }
+
+        // Mock du config loader
+        DeprecatedPropertiesConfigLoader configLoader = mock(DeprecatedPropertiesConfigLoader.class);
+        when(configLoader.getDeprecatedKeys()).thenReturn(List.of("app.old-property"));
+        when(configLoader.getDeprecatedWildcards()).thenReturn(List.of("jef.core.", "code.log."));
+        when(configLoader.getGuideUrl()).thenReturn("https://ton-site.com/guide-migration");
+
+        // Instancier le validator avec les mocks
+        DeprecatedPropertiesValidator validator = new DeprecatedPropertiesValidator(environment, configLoader);
+        validator.afterSingletonsInstantiated();
+
+        // Vérifier les logs
+        ArgumentCaptor<ILoggingEvent> captor = ArgumentCaptor.forClass(ILoggingEvent.class);
+        verify(mockAppender, atLeast(2)).doAppend(captor.capture());
+
+        List<ILoggingEvent> logs = captor.getAllValues();
+
+        assertTrue(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("app.old-property")));
+        assertTrue(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("jef.core.timeout")));
+        assertTrue(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("code.log.test")));
+        assertFalse(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("app.valid.property")));
     }
 
-    // Mock du config loader
-    DeprecatedPropertiesConfigLoader configLoader = mock(DeprecatedPropertiesConfigLoader.class);
-    when(configLoader.getDeprecatedKeys()).thenReturn(List.of("app.old-property"));
-    when(configLoader.getDeprecatedWildcards()).thenReturn(List.of("jef.core.", "code.log."));
-    when(configLoader.getGuideUrl()).thenReturn("https://ton-site.com/guide-migration");
+    @Test
+    void shouldNotLogWarningsWhenNoDeprecatedPropertiesPresent() {
+        ConfigurableEnvironment environment = mock(ConfigurableEnvironment.class);
+        Map<String, Object> properties = Map.of("app.valid.property", "ok");
+        MapPropertySource propertySource = new MapPropertySource("test", properties);
+        when(environment.getPropertySources()).thenReturn(new org.springframework.core.env.MutablePropertySources());
+        environment.getPropertySources().addLast(propertySource);
 
-    // Test du validator
-    DeprecatedPropertiesValidator validator = new DeprecatedPropertiesValidator(environment, configLoader);
-    validator.afterSingletonsInstantiated();
+        for (String key : properties.keySet()) {
+            when(environment.containsProperty(key)).thenReturn(true);
+            when(environment.getProperty(key)).thenReturn(properties.get(key).toString());
+        }
 
-    ArgumentCaptor<ILoggingEvent> captor = ArgumentCaptor.forClass(ILoggingEvent.class);
-    verify(mockAppender, atLeastOnce()).doAppend(captor.capture());
+        DeprecatedPropertiesConfigLoader configLoader = mock(DeprecatedPropertiesConfigLoader.class);
+        when(configLoader.getDeprecatedKeys()).thenReturn(List.of("app.old-property"));
+        when(configLoader.getDeprecatedWildcards()).thenReturn(List.of("jef.core.", "code.log."));
+        when(configLoader.getGuideUrl()).thenReturn("https://ton-site.com/guide-migration");
 
-    List<ILoggingEvent> logs = captor.getAllValues();
-    assertTrue(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("jef.core.timeout")));
-    assertTrue(logs.stream().anyMatch(log -> log.getFormattedMessage().contains("code.log.test")));
+        DeprecatedPropertiesValidator validator = new DeprecatedPropertiesValidator(environment, configLoader);
+        validator.afterSingletonsInstantiated();
+
+        ArgumentCaptor<ILoggingEvent> captor = ArgumentCaptor.forClass(ILoggingEvent.class);
+        verify(mockAppender, never()).doAppend(captor.capture());
+    }
 }
