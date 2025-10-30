@@ -36,3 +36,32 @@ class TypeHelperParameterizeTest {
         assertThat(result.getActualTypeArguments()[1]).isEqualTo(Integer.class);
     }
 }
+-------
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Type;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class YourClassTest {
+
+    @Test
+    @DisplayName("Should fail with message when actualType is an interface")
+    void shouldFailWithMessageWhenActualTypeIsInterface() {
+        // Given
+        Type actualType = Runnable.class; // Exemple d'interface
+        
+        // When & Then
+        assertThatThrownBy(() -> {
+            if (TypeHelper.isInterface(actualType)) {
+                failWithMessage("PewDto Collection is not an Iterable/Map interface. Please correct : %s", 
+                    TypeHelper.getSimpleName(actualType));
+            }
+        })
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("PewDto Collection is not an Iterable/Map interface")
+        .hasMessageContaining("Runnable");
+    }
+}
+-------
