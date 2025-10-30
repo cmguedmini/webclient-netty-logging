@@ -440,3 +440,83 @@ class JobRunnerConfigTest {
     }
 }
 -----------------------
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
+
+import java.util.Collections;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AutoJobLauncherConfigTest {
+
+    @Mock
+    private ApplicationContext applicationContext;
+
+    @Mock
+    private JobLauncher jobLauncher;
+
+    @Mock
+    private Job mockJob;
+
+    @Captor
+    private ArgumentCaptor<JobParameters> jobParametersCaptor;
+
+    private AutoJobLauncherConfig autoJobLauncherConfig;
+
+    @BeforeEach
+    void setUp() {
+        autoJobLauncherConfig = new AutoJobLauncherConfig(applicationContext, jobLauncher);
+    }
+
+    @Test
+    @DisplayName("Should execute job with correct parameters when one job is found")
+    void shouldExecuteJobWithCorrectParameters() throws Exception {
+        // Given
+        Map<String, Job> jobs = Map.of("testJob", mockJob);
+        when(applicationContext.getBeansOfType(Job.class)).thenReturn(jobs);
+
+        CommandLineRunner jobRunner = autoJobLauncherConfig.jobRunner();
+
+        // When
+        jobRunner.run();
+
+        // Then
+        verify(jobLauncher).run(eq(mockJob), jobParametersCaptor.capture());
+        
+        JobParameters capturedParams = jobParametersCaptor.getValue();
+        assertThat(capturedParams.getString("jobId")).isNotNull();
+        assertThat(capturedParams.getLong("timestamp")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should not execute any job when application context has no jobs")
+    void shouldNotExecuteWhenNoJobs() throws Exception {
+        // Given
+        when(applicationContext.getBeansOfType(Job.class)).thenReturn(Collections.emptyMap());
+
+        CommandLineRunner jobRunner = autoJobLauncherConfig.jobRunner();
+
+        // When
+        jobRunner.run();
+
+        // Then
+        verify(jobLauncher, never()).run(any(Job.class), any(JobParameters.class));
+        verifyNoInteractions(mockJob);
+    }
+}
