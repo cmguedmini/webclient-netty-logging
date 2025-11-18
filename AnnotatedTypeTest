@@ -1,174 +1,131 @@
-package com.example.reflection; // Adaptez le package selon votre structure
+package com.example.reflection; // Assurez-vous d'avoir la bonne structure de package
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import java.lang.reflect.*;
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.AnnotatedTypeVariable;
+import java.lang.reflect.Method;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Classe de test pour la méthode statique getAnnotatedTypeParameter.
- * Nous simulons les interfaces AnnotatedType nécessaires pour couvrir tous les cas 'instanceof'.
+ * Version simplifiée des tests pour AnnotatedTypeHelper, utilisant la réflexion
+ * réelle sur une classe de référence pour générer les AnnotatedType.
  */
 class AnnotatedTypeHelperTest {
 
-    // --- Simulation d'AnnotatedType (Implémentations Minimales) ---
-
-    // Type AnnotatedType de base pour le retour vide
-    private static final AnnotatedType DUMMY_TYPE = () -> null;
-
-    // Instance pour le cas AnnotatedParametrizedType
-    private static AnnotatedParameterizedType createMockParameterizedType(AnnotatedType[] args) {
-        return new AnnotatedParameterizedType() {
-            @Override
-            public AnnotatedType[] getAnnotatedActualTypeArguments() {
-                return args;
-            }
-            @Override
-            public Type getOwnerType() { return null; }
-            @Override
-            public Type getType() { return null; }
-            @Override
-            public <T extends java.lang.annotation.Annotation> T getAnnotation(Class<T> annotationClass) { return null; }
-            @Override
-            public java.lang.annotation.Annotation[] getAnnotations() { return new java.lang.annotation.Annotation[0]; }
-            @Override
-            public java.lang.annotation.Annotation[] getDeclaredAnnotations() { return new java.lang.annotation.Annotation[0]; }
-        };
+    // --- Classe de Référence (pour générer tous les types AnnotatedType via la réflexion) ---
+    
+    // T est une TypeVariable
+    // List<String> est un AnnotatedParameterizedType
+    // E[] est un AnnotatedArrayType (si E est un type variable)
+    // ? extends Number est un AnnotatedWildcardType
+    static class ReferenceClass<T> {
+        public List<String> parameterizedTypeMethod() { return null; }
+        public T typeVariableMethod() { return null; }
+        public T[] arrayTypeMethod() { return null; }
+        public List<? extends Number> wildcardTypeMethod() { return null; }
+        public String simpleTypeMethod() { return null; } // Pour le cas non géré
     }
 
-    // Instance pour le cas AnnotatedTypeVariable
-    private static AnnotatedTypeVariable createMockTypeVariable(AnnotatedType[] bounds) {
-        return new AnnotatedTypeVariable() {
-            @Override
-            public AnnotatedType[] getAnnotatedBounds() {
-                return bounds;
-            }
-            @Override
-            public Type getType() { return null; }
-            @Override
-            public <T extends java.lang.annotation.Annotation> T getAnnotation(Class<T> annotationClass) { return null; }
-            @Override
-            public java.lang.annotation.Annotation[] getAnnotations() { return new java.lang.annotation.Annotation[0]; }
-            @Override
-            public java.lang.annotation.Annotation[] getDeclaredAnnotations() { return new java.lang.annotation.Annotation[0]; }
-        };
-    }
+    // --- Méthode Utile pour la Réflexion ---
 
-    // Instance pour le cas AnnotatedWildcardType
-    private static AnnotatedWildcardType createMockWildcardType(AnnotatedType[] upperBounds) {
-        return new AnnotatedWildcardType() {
-            @Override
-            public AnnotatedType[] getAnnotatedUpperBounds() {
-                return upperBounds;
-            }
-            @Override
-            public AnnotatedType[] getAnnotatedLowerBounds() { return new AnnotatedType[0]; }
-            @Override
-            public Type getType() { return null; }
-            @Override
-            public <T extends java.lang.annotation.Annotation> T getAnnotation(Class<T> annotationClass) { return null; }
-            @Override
-            public java.lang.annotation.Annotation[] getAnnotations() { return new java.lang.annotation.Annotation[0]; }
-            @Override
-            public java.lang.annotation.Annotation[] getDeclaredAnnotations() { return new java.lang.annotation.Annotation[0]; }
-        };
-    }
-
-    // Instance pour le cas AnnotatedArrayType (implique la récursivité)
-    private static AnnotatedArrayType createMockArrayType(AnnotatedType componentType) {
-        return new AnnotatedArrayType() {
-            @Override
-            public AnnotatedType getAnnotatedGenericComponentType() {
-                return componentType;
-            }
-            @Override
-            public Type getType() { return null; }
-            @Override
-            public <T extends java.lang.annotation.Annotation> T getAnnotation(Class<T> annotationClass) { return null; }
-            @Override
-            public java.lang.annotation.Annotation[] getAnnotations() { return new java.lang.annotation.Annotation[0]; }
-            @Override
-            public java.lang.annotation.Annotation[] getDeclaredAnnotations() { return new java.lang.annotation.Annotation[0]; }
-        };
+    /** Obtient l'AnnotatedType de retour d'une méthode spécifique. */
+    private AnnotatedType getAnnotatedReturnType(String methodName) throws NoSuchMethodException {
+        Method method = ReferenceClass.class.getMethod(methodName);
+        return method.getAnnotatedReturnType();
     }
 
     // --- Tests Uniques pour chaque Type ---
 
     @Test
-    @DisplayName("Devrait retourner les arguments de type pour AnnotatedParameterizedType")
-    void getAnnotatedTypeParameter_whenParameterizedType_shouldReturnTypeArguments() {
+    @DisplayName("Devrait retourner les arguments de type pour AnnotatedParameterizedType (List<String>)")
+    void getAnnotatedTypeParameter_whenParameterizedType_shouldReturnTypeArguments() throws NoSuchMethodException {
         // ARRANGE
-        AnnotatedType[] expectedArgs = {DUMMY_TYPE, DUMMY_TYPE};
-        AnnotatedType type = createMockParameterizedType(expectedArgs);
+        AnnotatedType type = getAnnotatedReturnType("parameterizedTypeMethod"); // Vrai AnnotatedParameterizedType
 
         // ACT
-        AnnotatedType[] result = RegexHelper.getAnnotatedTypeParameter(type);
+        AnnotatedType[] result = AnnotatedTypeHelper.getAnnotatedTypeParameter(type);
 
         // ASSERT
-        assertArrayEquals(expectedArgs, result, 
-                          "Devrait retourner les AnnotatedActualTypeArguments.");
+        // List<String> a un seul argument : String
+        assertNotNull(result, "Le résultat ne devrait pas être null.");
+        assertEquals(1, result.length, "Devrait trouver l'argument de type 'String'.");
+        // Vérifie si le type retourné est effectivement 'String' (ou sa représentation Annotated)
+        assertEquals(String.class, result[0].getType(), "L'argument de type devrait être String.");
     }
 
     @Test
-    @DisplayName("Devrait retourner les bornes pour AnnotatedTypeVariable")
-    void getAnnotatedTypeParameter_whenTypeVariable_shouldReturnBounds() {
+    @DisplayName("Devrait retourner les bornes pour AnnotatedTypeVariable (T)")
+    void getAnnotatedTypeParameter_whenTypeVariable_shouldReturnBounds() throws NoSuchMethodException {
         // ARRANGE
-        AnnotatedType[] expectedBounds = {DUMMY_TYPE};
-        AnnotatedType type = createMockTypeVariable(expectedBounds);
-
+        AnnotatedType type = getAnnotatedReturnType("typeVariableMethod"); // Vrai AnnotatedTypeVariable
+        
         // ACT
-        AnnotatedType[] result = RegexHelper.getAnnotatedTypeParameter(type);
+        AnnotatedType[] result = AnnotatedTypeHelper.getAnnotatedTypeParameter(type);
 
         // ASSERT
-        assertArrayEquals(expectedBounds, result, 
-                          "Devrait retourner les AnnotatedBounds.");
+        // T a une seule borne par défaut : Object
+        assertNotNull(result, "Le résultat ne devrait pas être null.");
+        assertEquals(1, result.length, "Devrait trouver la borne par défaut 'Object'.");
+        // Le résultat est le tableau des bornes (AnnotatedTypeVariable.getAnnotatedBounds())
+        assertTrue(type instanceof AnnotatedTypeVariable, "Le type doit être AnnotatedTypeVariable.");
+        assertArrayEquals(((AnnotatedTypeVariable) type).getAnnotatedBounds(), result, 
+                          "Devrait retourner les bornes Annotated (Object).");
     }
 
     @Test
-    @DisplayName("Devrait retourner les bornes supérieures pour AnnotatedWildcardType")
-    void getAnnotatedTypeParameter_whenWildcardType_shouldReturnUpperBounds() {
+    @DisplayName("Devrait gérer la récursivité pour AnnotatedArrayType (T[])")
+    void getAnnotatedTypeParameter_whenArrayType_shouldRecurse() throws NoSuchMethodException {
         // ARRANGE
-        AnnotatedType[] expectedUpperBounds = {DUMMY_TYPE};
-        AnnotatedType type = createMockWildcardType(expectedUpperBounds);
+        AnnotatedType type = getAnnotatedReturnType("arrayTypeMethod"); // Vrai AnnotatedArrayType<T>
 
         // ACT
-        AnnotatedType[] result = RegexHelper.getAnnotatedTypeParameter(type);
+        AnnotatedType[] result = AnnotatedTypeHelper.getAnnotatedTypeParameter(type);
 
         // ASSERT
-        assertArrayEquals(expectedUpperBounds, result, 
-                          "Devrait retourner les AnnotatedUpperBounds.");
+        // Un tableau T[] récursive sur T (AnnotatedTypeVariable).
+        // Le résultat devrait être les bornes de T (qui est Object par défaut).
+        assertTrue(type instanceof AnnotatedArrayType, "Le type doit être AnnotatedArrayType.");
+        assertNotNull(result, "Le résultat ne devrait pas être null.");
+        assertEquals(1, result.length, "Devrait trouver les bornes de l'élément (Object).");
+        assertEquals(Object.class, result[0].getType(), "La borne récursive devrait être Object.");
     }
 
     @Test
-    @DisplayName("Devrait gérer la récursivité pour AnnotatedArrayType (cas simple)")
-    void getAnnotatedTypeParameter_whenArrayType_shouldRecurse() {
+    @DisplayName("Devrait retourner les bornes supérieures pour AnnotatedWildcardType (List<? extends Number>)")
+    void getAnnotatedTypeParameter_whenWildcardType_shouldReturnUpperBounds() throws NoSuchMethodException {
         // ARRANGE
-        // Crée un tableau d'un type paramétré simple : AnnotatedType[] -> AnnotatedParameterizedType
-        AnnotatedType[] expectedArgs = {DUMMY_TYPE, DUMMY_TYPE};
-        AnnotatedParameterizedType parameterizedType = createMockParameterizedType(expectedArgs);
-        AnnotatedArrayType arrayType = createMockArrayType(parameterizedType);
-
+        // AnnotatedParameterizedType -> AnnotatedWildcardType
+        AnnotatedType parameterizedType = getAnnotatedReturnType("wildcardTypeMethod"); 
+        
+        // Extrait le AnnotatedWildcardType réel de la List (List a 1 argument)
+        AnnotatedType wildcardType = ((java.lang.reflect.AnnotatedParameterizedType) parameterizedType)
+                                        .getAnnotatedActualTypeArguments()[0];
+        
         // ACT
-        AnnotatedType[] result = RegexHelper.getAnnotatedTypeParameter(arrayType);
+        AnnotatedType[] result = AnnotatedTypeHelper.getAnnotatedTypeParameter(wildcardType);
 
         // ASSERT
-        assertArrayEquals(expectedArgs, result, 
-                          "Devrait récursiver sur le type de composant et retourner ses arguments.");
+        // ? extends Number a une seule borne supérieure : Number
+        assertTrue(wildcardType instanceof java.lang.reflect.AnnotatedWildcardType, "Le type doit être AnnotatedWildcardType.");
+        assertNotNull(result, "Le résultat ne devrait pas être null.");
+        assertEquals(1, result.length, "Devrait trouver la borne supérieure 'Number'.");
+        assertEquals(Number.class, result[0].getType(), "La borne supérieure devrait être Number.");
     }
     
     @Test
-    @DisplayName("Devrait gérer le type non géré (AnnotatedType de base) en retournant un tableau vide")
-    void getAnnotatedTypeParameter_whenUnhandledType_shouldReturnEmptyArray() {
+    @DisplayName("Devrait retourner un tableau vide pour un type non géré (String)")
+    void getAnnotatedTypeParameter_whenUnhandledType_shouldReturnEmptyArray() throws NoSuchMethodException {
         // ARRANGE
-        // Utilisation du DUMMY_TYPE qui n'implémente aucune des interfaces spécifiques
-        AnnotatedType unhandledType = DUMMY_TYPE;
+        AnnotatedType type = getAnnotatedReturnType("simpleTypeMethod"); // Vrai AnnotatedType (pas une instance gérée)
 
         // ACT
-        AnnotatedType[] result = RegexHelper.getAnnotatedTypeParameter(unhandledType);
+        AnnotatedType[] result = AnnotatedTypeHelper.getAnnotatedTypeParameter(type);
 
         // ASSERT
-        assertNotNull(result, "Le résultat ne devrait jamais être null.");
-        assertEquals(0, result.length, 
-                     "Devrait retourner un tableau vide pour les types non gérés.");
+        assertNotNull(result, "Le résultat ne devrait pas être null.");
+        assertEquals(0, result.length, "Devrait retourner un tableau vide pour les types non gérés.");
     }
 }
