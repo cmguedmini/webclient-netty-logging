@@ -11,56 +11,61 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 import javax.net.ssl.SSLContext;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+// Classe utilitaire pour la conversion de type (similaire à NumberHelper de l'original)
+class NumberHelper {
+    public static int intValue(long value) {
+        return (int) Math.min(value, Integer.MAX_VALUE);
+    }
+}
+
 /**
  * Helper class for building and configuring RestClient instances,
- * supporting custom timeouts, SSL context, and ObjectMapper configuration.
- *
- * NOTE: This class assumes the presence of Apache HttpClient 5.x dependencies.
- * The internal methods are designed to mimic the original RestTemplateHelper structure.
+ * supporting custom timeouts, SSL context, ObjectMapper, and Retry logic via interceptor.
  */
 public final class RestClientHelper {
 
-    // --- Utility assumptions (to replace internal helper methods) ---
+    // --- Public Build Methods avec Retry (utilisant Duration) ---
 
-    // Assuming a simplified version of NumberHelper.intValue for demonstration
-    private static int intValue(long value) {
-        return (int) Math.min(value, Integer.MAX_VALUE);
-    }
-
-    // --- Public Build Methods (Mirroring Original RestTemplateHelper) ---
-
-    /**
-     * Builds a configured RestClient using Duration for timeouts.
-     */
-    public static RestClient build(final Duration connectionTimeout, final Duration responseTimeout, final SSLContext sslContext, final ObjectMapper objectMapper) {
-        int finalConnectionTimeout = intValue(TimeUnit.MILLISECONDS.convert(connectionTimeout));
+    public static RestClient build(final Duration connectionTimeout, final Duration responseTimeout, final SSLContext sslContext, final ObjectMapper objectMapper, final int maxRetries, final long retryDelayMs) {
+        int finalConnectionTimeout = NumberHelper.intValue(TimeUnit.MILLISECONDS.convert(connectionTimeout));
         long finalResponseTimeout = TimeUnit.MILLISECONDS.convert(responseTimeout);
-        return build(finalConnectionTimeout, finalResponseTimeout, sslContext, objectMapper);
+        return build(finalConnectionTimeout, finalResponseTimeout, sslContext, objectMapper, maxRetries, retryDelayMs);
     }
 
-    /**
-     * Builds a configured RestClient using raw int/long for timeouts.
-     */
-    public static RestClient build(final int connectionTimeout, final long responseTimeout, final SSLContext sslContext, final ObjectMapper objectMapper) {
-        // The core logic delegates the factory creation
-        return build(() -> createRequestFactory(sslContext, connectionTimeout, responseTimeout), objectMapper);
+    // --- Public Build Methods avec Retry (utilisant des ms) ---
+
+    public static RestClient build(final int connectionTimeout, final long responseTimeout, final SSLContext sslContext, final ObjectMapper objectMapper, final int maxRetries, final long retryDelayMs) {
+        // Crée la liste des intercepteurs
+        List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
+        // Ajout conditionnel de l'intercepteur de réessai
+        if (maxRetries > 0) {
+            // Utilise l'intercepteur défini pour gérer la logique de retry
+            interceptors.add(new RetryClientHttpRequestInterceptor(maxRetries, retryDelayMs));
+        }
+
+        // Appel à la méthode de construction principale
+        return build(() -> createRequestFactory(sslContext, connectionTimeout, responseTimeout), objectMapper, interceptors);
     }
 
-    /**
-     * Core method to build the RestClient using a supplied ClientHttpRequestFactory and configuring the ObjectMapper.
-     */
-    public static RestClient build(final Supplier<ClientHttpRequestFactory> requestFactorySupplier, final ObjectMapper objectMapper) {
+    // --- Core Build Method (gère l'injection de Factory, ObjectMapper et Intercepteurs) ---
+
+    public static RestClient build(final Supplier<ClientHttpRequestFactory> requestFactorySupplier, final ObjectMapper objectMapper, final List<ClientHttpRequestInterceptor> interceptors) {
         RestClient.Builder builder = RestClient.builder()
-                // Use the configured request factory
-                .requestFactory(requestFactorySupplier.get());
+                // Applique la ClientHttpRequestFactory pour la config bas niveau (timeouts, SSL)
+                .requestFactory(requestFactorySupplier.get())
+                // Applique les intercepteurs (y compris le Retry Interceptor)
+                .requestInterceptors(interceptorList -> interceptorList.addAll(interceptors));
 
-        // Configure the ObjectMapper within the message converters
+        // Configure l'ObjectMapper dans le message converter Jackson
         if (objectMapper != null) {
             builder.messageConverters(converters -> {
                 converters.stream()
@@ -73,20 +78,14 @@ public final class RestClientHelper {
         return builder.build();
     }
 
-    // --- ClientHttpRequestFactory Creation Methods ---
+    // --- ClientHttpRequestFactory Creation Methods (Transférés de RestTemplateHelper) ---
 
-    /**
-     * Creates a ClientHttpRequestFactory configured with Duration timeouts.
-     */
     public static ClientHttpRequestFactory createRequestFactory(final SSLContext sslContext, final Duration connectionTimeout, final Duration responseTimeout) {
-        int finalConnectionTimeout = intValue(TimeUnit.MILLISECONDS.convert(connectionTimeout));
+        int finalConnectionTimeout = NumberHelper.intValue(TimeUnit.MILLISECONDS.convert(connectionTimeout));
         long finalResponseTimeout = TimeUnit.MILLISECONDS.convert(responseTimeout);
         return createRequestFactory(sslContext, finalConnectionTimeout, finalResponseTimeout);
     }
 
-    /**
-     * Creates the HttpComponentsClientHttpRequestFactory by building a custom Apache HttpClient.
-     */
     public static ClientHttpRequestFactory createRequestFactory(final SSLContext sslContext, final int connectionTimeout, final long responseTimeout) {
 
         final PoolingHttpClientConnectionManagerBuilder connectionManagerBuilder = PoolingHttpClientConnectionManagerBuilder.create();
@@ -97,7 +96,7 @@ public final class RestClientHelper {
             connectionManagerBuilder.setTlsSocketStrategy(tlsStrategy);
         }
 
-        // 2. Configure Response/Socket Timeout (for read/data transfer timeout)
+        // 2. Configure Response/Socket Timeout
         if (responseTimeout > 0) {
             connectionManagerBuilder.setDefaultSocketConfig(
                     SocketConfig.custom().setSoTimeout(Timeout.ofMilliseconds(responseTimeout)).build());
@@ -105,16 +104,15 @@ public final class RestClientHelper {
 
         // 3. Build the underlying Apache HttpClient
         final HttpClient httpClient = HttpClients.custom()
-                .disableAutomaticRetries() // Matching the original implementation
+                .disableAutomaticRetries() // Désactivation des retries HTTP natifs pour laisser l'intercepteur Spring gérer la logique
                 .setConnectionManager(connectionManagerBuilder.build())
                 .build();
 
         // 4. Wrap the HttpClient in Spring's factory
         final HttpComponentsClientHttpRequestFactory rf = new HttpComponentsClientHttpRequestFactory(httpClient);
 
-        // 5. Configure Connection Timeout (for establishing the connection)
+        // 5. Configure Connection Timeout
         if (connectionTimeout > 0) {
-            // Using Duration-based setter, which is preferred, converting the int back to Duration.
             rf.setConnectTimeout(Duration.ofMillis(connectionTimeout));
         }
 
