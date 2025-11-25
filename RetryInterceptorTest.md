@@ -1,8 +1,6 @@
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
@@ -17,28 +15,40 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Test unitaire pour RetryInterceptor
+ * Option 1: Utiliser MockitoAnnotations.openMocks() - PAS d'extension
+ */
 class RetryInterceptorTest {
 
-    @Mock
     private HttpRequest request;
-
-    @Mock
     private ClientHttpRequestExecution execution;
-
-    @Mock
     private ClientHttpResponse response;
-
     private RetryInterceptor interceptor;
     private byte[] body;
+    private AutoCloseable mocks;
 
     @BeforeEach
     void setUp() {
+        // Initialiser les mocks manuellement
+        mocks = org.mockito.MockitoAnnotations.openMocks(this);
+        
+        request = mock(HttpRequest.class);
+        execution = mock(ClientHttpRequestExecution.class);
+        response = mock(ClientHttpResponse.class);
+        
         interceptor = new RetryInterceptor(3, 100, 1000);
         body = new byte[0];
         
         when(request.getMethod()).thenReturn(HttpMethod.GET);
         when(request.getURI()).thenReturn(URI.create("http://api.example.com/test"));
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if (mocks != null) {
+            mocks.close();
+        }
     }
 
     @Test
@@ -142,7 +152,7 @@ class RetryInterceptorTest {
         // Then
         assertThat(result).isEqualTo(response);
         verify(execution, times(3)).execute(request, body);
-        verify(response, times(2)).close(); // Fermé 2 fois (tentatives 1 et 2)
+        verify(response, times(2)).close();
     }
 
     @Test
@@ -223,23 +233,186 @@ class RetryInterceptorTest {
     }
 }
 
-// Dépendances Maven nécessaires (pom.xml)
-/*
-<dependencies>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-test</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-junit-jupiter</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.assertj</groupId>
-        <artifactId>assertj-core</artifactId>
-        <scope>test</scope>
-    </dependency>
-</dependencies>
+// ============================================
+// OPTION 2: Sans Mockito - Avec des implémentations de test
+// ============================================
+
+/**
+ * Alternative SANS Mockito - Utilise des implémentations de test
+ */
+class RetryInterceptorWithoutMockitoTest {
+
+    private RetryInterceptor interceptor;
+    private TestHttpRequest request;
+    private byte[] body;
+
+    @BeforeEach
+    void setUp() {
+        interceptor = new RetryInterceptor(3, 50, 500);
+        request = new TestHttpRequest("http://api.example.com/test");
+        body = new byte[0];
+    }
+
+    @Test
+    void shouldSucceedOnFirstAttempt() throws IOException {
+        // Given
+        TestExecution execution = new TestExecution(HttpStatus.OK);
+
+        // When
+        ClientHttpResponse result = interceptor.intercept(request, body, execution);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(execution.getCallCount()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRetryOn500() throws IOException {
+        // Given
+        TestExecution execution = new TestExecution(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            HttpStatus.OK
+        );
+
+        // When
+        ClientHttpResponse result = interceptor.intercept(request, body, execution);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(execution.getCallCount()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldFailAfterMaxAttempts() {
+        // Given
+        TestExecution execution = new TestExecution(new IOException("Connection error"));
+
+        // When & Then
+        assertThatThrownBy(() -> interceptor.intercept(request, body, execution))
+            .isInstanceOf(IOException.class)
+            .hasMessageContaining("Connection error");
+
+        assertThat(execution.getCallCount()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldNotRetryOn404() throws IOException {
+        // Given
+        TestExecution execution = new TestExecution(HttpStatus.NOT_FOUND);
+
+        // When
+        ClientHttpResponse result = interceptor.intercept(request, body, execution);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(execution.getCallCount()).isEqualTo(1);
+    }
+
+    // Classes de test internes
+    static class TestHttpRequest implements HttpRequest {
+        private final URI uri;
+
+        public TestHttpRequest(String url) {
+            this.uri = URI.create(url);
+        }
+
+        @Override
+        public HttpMethod getMethod() {
+            return HttpMethod.GET;
+        }
+
+        @Override
+        public URI getURI() {
+            return uri;
+        }
+
+        @Override
+        public org.springframework.http.HttpHeaders getHeaders() {
+            return new org.springframework.http.HttpHeaders();
+        }
+    }
+
+    static class TestExecution implements ClientHttpRequestExecution {
+        private final HttpStatus[] statusSequence;
+        private final IOException exception;
+        private int callCount = 0;
+
+        public TestExecution(HttpStatus... statusSequence) {
+            this.statusSequence = statusSequence;
+            this.exception = null;
+        }
+
+        public TestExecution(IOException exception) {
+            this.statusSequence = null;
+            this.exception = exception;
+        }
+
+        @Override
+        public ClientHttpResponse execute(HttpRequest request, byte[] body) throws IOException {
+            callCount++;
+            
+            if (exception != null) {
+                throw exception;
+            }
+            
+            HttpStatus status = statusSequence[Math.min(callCount - 1, statusSequence.length - 1)];
+            return new TestClientHttpResponse(status);
+        }
+
+        public int getCallCount() {
+            return callCount;
+        }
+    }
+
+    static class TestClientHttpResponse implements ClientHttpResponse {
+        private final HttpStatus status;
+
+        public TestClientHttpResponse(HttpStatus status) {
+            this.status = status;
+        }
+
+        @Override
+        public HttpStatus getStatusCode() {
+            return status;
+        }
+
+        @Override
+        public String getStatusText() {
+            return status.getReasonPhrase();
+        }
+
+        @Override
+        public void close() {
+            // No-op
+        }
+
+        @Override
+        public java.io.InputStream getBody() {
+            return new java.io.ByteArrayInputStream(new byte[0]);
+        }
+
+        @Override
+        public org.springframework.http.HttpHeaders getHeaders() {
+            return new org.springframework.http.HttpHeaders();
+        }
+    }
+}
+
+/* 
+Dépendances Maven minimales:
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.assertj</groupId>
+    <artifactId>assertj-core</artifactId>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.mockito</groupId>
+    <artifactId>mockito-core</artifactId>
+    <scope>test</scope>
+</dependency>
 */
