@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mise à jour du Framework - Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+/* 1. THE SETUP */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0f172a; /* Dark background for developer vibe */
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+  margin: 0;
+  min-height: 100vh;
+  padding: 20px 0;
+  place-items: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.slide-container {
+  align-items: center;
+  background-color: #1e293b; /* Slate 800 */
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  height: 720px;
+  justify-content: center;
+  overflow: hidden;
+  padding: 60px;
+  position: relative;
+  width: 1280px;
+}
+
+/* Accent Colors */
+:root {
+  --spring-green: #6db33f;
+  --java-orange: #f89820;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --bg-card: #334155;
+}
+
+/* 1.1 BACKGROUND STYLING */
+.slide-container::before {
+  content: '';
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 0;
+  background: radial-gradient(circle at top right, rgba(109, 179, 63, 0.1), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(248, 152, 32, 0.05), transparent 40%);
+}
+
+.slide-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 2. CONSISTENT TYPOGRAPHY */
+.slide-container h1,
+.slide-container h2,
+.slide-container h3 {
+  color: var(--text-main);
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.slide-container p,
+.slide-container li,
+.slide-container .subtitle {
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.slide-container h1 {
+  font-size: 72px;
+  background: linear-gradient(to right, #fff, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.slide-container .slide-title {
+  font-size: 48px;
+  margin-bottom: 50px;
+  text-align: left;
+  width: 100%;
+  border-left: 6px solid var(--spring-green);
+  padding-left: 20px;
+}
+
+.slide-container h3 {
+  font-size: 28px;
+  margin-bottom: 15px;
+  color: #fff;
+}
+
+/* Code styling */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--spring-green);
+  font-size: 0.9em;
+}
+
+.content-area {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 3. LAYOUT DEFINITIONS */
+
+/* Title Layout */
+.title-layout {
+  text-align: center;
+  max-width: 900px;
+}
+.title-layout .subtitle {
+  font-size: 28px;
+  margin-top: 24px;
+  color: var(--spring-green);
+}
+
+/* Two Column Tiled */
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  width: 100%;
+  align-items: center; /* Center vertically */
+}
+.two-column.tiled > div {
+  background-color: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 40px;
+  height: 100%; /* Ensure equal height */
+}
+
+/* Image Right Text Left */
+.image-wrapper {
+  border-radius: 16px;
+  height: 400px;
+  width: 100%;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.image-wrapper img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+.two-column .image-wrapper img {
+    object-fit: contain; /* Specific override */
+}
+
+/* Tiled Text with Icons */
+.tiled-content {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  width: 100%;
+}
+.tile {
+  background-color: var(--bg-card);
+  border-radius: 16px;
+  padding: 30px;
+  text-align: left;
+  border-top: 4px solid var(--java-orange);
+  transition: transform 0.2s;
+}
+.tile .icon {
+  color: var(--java-orange);
+  font-size: 40px;
+  margin-bottom: 20px;
+}
+
+/* Bleed Image Right */
+.slide-container.bleed-image-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0;
+  align-items: start;
+  gap: 0;
+}
+.bleed-image-layout .content-container {
+  padding: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+.bleed-image-layout .image-container {
+  height: 100%;
+  width: 100%;
+}
+.bleed-image-layout img.bleed-image-side {
+  height: 100%;
+  max-height: 720px;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Styled Bullet Points */
+.bullet-list ul {
+  list-style: none;
+  padding: 0;
+}
+.bullet-list li {
+  margin-bottom: 25px;
+  padding-left: 50px;
+  position: relative;
+  font-size: 24px;
+}
+.bullet-list li i {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  color: var(--spring-green);
+  font-size: 24px;
+}
+
+/* Q&A */
+.qa-layout {
+  text-align: center;
+}
+.qa-layout h2 {
+  font-size: 100px;
+  color: var(--spring-green);
+  margin-bottom: 40px;
+}
+.contact-info {
+  margin-top: 40px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+}
+
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<div class="slide-container" id="slide1">
+    <div class="title-layout">
+        <h1>Mise à jour du Framework</h1>
+        <p class="subtitle">Migration vers Java 21 & Spring Boot 3.5.7</p>
+        <div style="margin-top: 40px; font-family: 'JetBrains Mono'; color: #94a3b8;">
+            &lt;version&gt;3.0.0-RELEASE&lt;/version&gt;
+        </div>
+    </div>
+</div>
+
+<!-- Slide 2: Overview (Java 21 + SB 3.5.7) -->
+<div class="slide-container" id="slide2">
+    <h2 class="slide-title">Les Piliers de la Mise à Jour</h2>
+    <div class="content-area">
+        <div class="two-column tiled">
+            <div>
+                <h3 style="color: var(--java-orange)"><i class="fa-brands fa-java"></i> Java 21 LTS</h3>
+                <p>Nous basculons vers la dernière version LTS de Java. Attendez-vous à des gains de performance significatifs grâce aux optimisations du JIT et à l'accès aux dernières API du langage.</p>
+                <ul style="text-align: left; margin-top: 20px; color: var(--text-muted);">
+                    <li>Performance Runtime</li>
+                    <li>Syntaxe moderne</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="color: var(--spring-green)"><i class="fa-solid fa-leaf"></i> Spring Boot 3.5.7</h3>
+                <p>Une mise à niveau majeure du cœur de notre stack. Cette version apporte une meilleure sécurité par défaut, une observabilité native et simplifie la configuration des microservices.</p>
+                <ul style="text-align: left; margin-top: 20px; color: var(--text-muted);">
+                    <li>Observabilité (Micrometer)</li>
+                    <li>Sécurité renforcée</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: Java 21 Details -->
+<div class="slide-container" id="slide3">
+    <h2 class="slide-title">Zoom sur Java 21</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div>
+                <ul class="bullet-list">
+                    <li><i class="fa-solid fa-microchip"></i> <strong>Threads Virtuels (Project Loom)</strong><br>Révolutionne la concurrence avec un débit élevé pour les applications I/O bound.</li>
+                    <li><i class="fa-solid fa-code"></i> <strong>Records & Pattern Matching</strong><br>Réduction drastique du boilerplate code et amélioration de la lisibilité.</li>
+                    <li><i class="fa-solid fa-gauge-high"></i> <strong>ZGC & Performance</strong><br>Amélioration du Garbage Collector pour des temps de pause millimétriques.</li>
+                </ul>
+            </div>
+            <div>
+                <div class="image-wrapper">
+                    <img src="http://googleusercontent.com/image_collection/image_retrieval/10569320562761988538" alt="Code Java moderne sur un écran">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 4: Spring Boot 3 Features -->
+<div class="slide-container" id="slide4">
+    <h2 class="slide-title">Nouveautés Spring Boot 3.5.7</h2>
+    <div class="content-area">
+        <div class="tiled-content">
+            <div class="tile">
+                <div class="icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>Sécurité</h3>
+                <p>Intégration des derniers correctifs de sécurité et des meilleures pratiques OAuth2/OIDC par défaut pour tous les modules.</p>
+            </div>
+            <div class="tile">
+                <div class="icon"><i class="fa-solid fa-eye"></i></div>
+                <h3>Observabilité</h3>
+                <p>Traçage distribué unifié avec Micrometer et Brave/Sleuth. Métriques détaillées disponibles out-of-the-box.</p>
+            </div>
+            <div class="tile">
+                <div class="icon"><i class="fa-solid fa-sliders"></i></div>
+                <h3>Configuration</h3>
+                <p>Gestion simplifiée des propriétés et activation conditionnelle plus intelligente pour réduire l'empreinte mémoire.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: The Migration Pain Point -->
+<div class="slide-container bleed-image-layout" id="slide5">
+    <div class="content-container">
+        <h2 class="slide-title" style="border-left-color: #ef4444;">⚠️ Point d'Attention :<br>javax.* vers jakarta.*</h2>
+        <div class="content-area">
+            <p style="font-size: 24px; color: #f1f5f9;"><strong>Le changement critique de cette version.</strong></p>
+            <p>Avec la montée de version vers Spring Boot 3, nous passons à la spécification Jakarta EE 10.</p>
+            <ul class="bullet-list" style="margin-top: 20px;">
+                <li><i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Remplacement de tous les imports <code>javax.*</code> par <code>jakarta.*</code>.</li>
+                <li><i class="fa-solid fa-database" style="color: #ef4444;"></i> Impacte JPA (Hibernate), Validation et Servlets.</li>
+            </ul>
+        </div>
+    </div>
+    <div class="image-container">
+        <img class="bleed-image-side" src="http://googleusercontent.com/image_collection/image_retrieval/12265352710610804289" alt="Panneau d'avertissement chantier">
+    </div>
+</div>
+
+<!-- Slide 6: New Internal Features -->
+<div class="slide-container" id="slide6">
+    <h2 class="slide-title">Nouvelles Fonctionnalités Framework</h2>
+    <div class="content-area">
+        <div class="bullet-list">
+            <ul>
+                <li>
+                    <i class="fa-solid fa-server"></i>
+                    <strong>Support DB Amélioré</strong>
+                    <p style="font-size: 18px; margin-top: 5px;">Intégration optimisée avec notre SGBD standard et gestion avancée des transactions distribuées.</p>
+                </li>
+                <li>
+                    <i class="fa-solid fa-layer-group"></i>
+                    <strong>Abstraction de Cache</strong>
+                    <p style="font-size: 18px; margin-top: 5px;">Nouvelle couche permettant de switcher instantanément entre Redis, Caffeine ou Ehcache par simple configuration.</p>
+                </li>
+                <li>
+                    <i class="fa-solid fa-key"></i>
+                    <strong>Modèles de Sécurité</strong>
+                    <p style="font-size: 18px; margin-top: 5px;">Templates pré-configurés pour la validation JWT et la sécurité des APIs, réduisant le code boilerplate de 60%.</p>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 7: Resources -->
+<div class="slide-container" id="slide7">
+    <h2 class="slide-title">Documentation & Ressources</h2>
+    <div class="content-area">
+        <div class="two-column">
+             <div>
+                <p>Pour vous accompagner dans cette transition, le site de documentation Framework a été mis à jour :</p>
+                <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 30px;">
+                    <div style="background: var(--bg-card); padding: 20px; border-radius: 8px; border-left: 4px solid var(--spring-green);">
+                        <h3 style="font-size: 20px; margin-bottom: 5px;">📖 Guide de Migration</h3>
+                        <p style="font-size: 16px;">Instructions pas à pas pour la conversion Jakarta.</p>
+                    </div>
+                    <div style="background: var(--bg-card); padding: 20px; border-radius: 8px; border-left: 4px solid var(--java-orange);">
+                        <h3 style="font-size: 20px; margin-bottom: 5px;">👨‍🍳 Cookbook</h3>
+                        <p style="font-size: 16px;">Exemples de code (Snippets) pour les nouvelles fonctionnalités.</p>
+                    </div>
+                     <div style="background: var(--bg-card); padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <h3 style="font-size: 20px; margin-bottom: 5px;">🚀 Quick Start</h3>
+                        <p style="font-size: 16px;">Générateur de projet mis à jour pour la v21.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="image-wrapper">
+                <img src="http://googleusercontent.com/image_collection/image_retrieval/8794567391521277110" alt="Bibliothèque et documentation">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 8: Q&A -->
+<div class="slide-container" id="slide8">
+    <div class="qa-layout">
+        <h2>Questions ?</h2>
+        <p>L'équipe Framework est à votre disposition.</p>
+        <div class="contact-info">
+            #framework-support | wiki/framework
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
