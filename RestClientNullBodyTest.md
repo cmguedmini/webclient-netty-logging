@@ -17,11 +17,11 @@ class RestClientNullBodyTest {
 
     @BeforeEach
     void setUp() {
-        restClient = RestClient.builder()
-                .baseUrl("https://api.example.com")
-                .build();
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://api.example.com");
         
-        mockServer = MockRestServiceServer.bindTo(restClient).build();
+        mockServer = MockRestServiceServer.bindTo(builder).build();
+        restClient = builder.build();
     }
 
     @Test
