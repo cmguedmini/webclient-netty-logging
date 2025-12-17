@@ -1,0 +1,24 @@
+
+# src/test/resources/application-test.yml
+httpclient5:
+  rest:
+    base-url: http://localhost:0     # placeholder: sera override par TestRestClientFactoryConfig
+    default-headers:
+      Accept: application/json
+  timeouts:
+    connect: 200ms
+    response: 300ms
+    connection-request: 200ms
+  retry:
+    max-attempts: 3
+    retry-non-idempotent: false
+    backoff:
+      initial-interval: 100ms
+      max-interval: 200ms
+      multiplier: 1.5
+    retry-on-status: [500, 502, 503, 504, 429]
+    retry-on-exceptions:
+      - java.io.IOException
+      - org.apache.hc.core5.http.NoHttpResponseException
+      - org.apache.hc.client5.http.ConnectTimeoutException
+      - org.apache.hc.client5.http.ConnectException
