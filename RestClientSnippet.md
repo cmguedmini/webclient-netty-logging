@@ -164,3 +164,7 @@ public User getUserOrNull(Long id) {
 *   Pour `onStatus`, la stratégie dépend de ton cas d’usage : lever des exceptions custom, renvoyer une valeur par défaut, ou mapper vers un type `Optional<User>`.
 
 Si tu veux, je peux te regrouper tout ça dans une **classe utilitaire** unique (`UserClient`) prête à copier-coller avec tests unitaires simples (Mockito/MockWebServer).
+
+Pour en savoir plus — y compris toutes les méthodes disponibles (builder(), get(), retrieve(), body(), toEntity()…) — consultez la documentation officielle : [docs.spring.io], [spring.io]
+RestClient – Spring Framework 6.1+ (Javadoc)
+https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/client/RestClient.html
