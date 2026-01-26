@@ -69,3 +69,26 @@ private static <T> ResponseEntity<T> toExchange(final RestClient.ResponseSpec rc
 * **Configuration :** Assurez-vous d'injecter `RestClient.Builder` pour bénéficier de la configuration automatique de Spring Boot (sérialiseurs JSON, etc.).
 
 Souhaitez-vous que je vous aide à adapter spécifiquement votre méthode `toRestTemplateException` pour qu'elle soit compatible avec les réponses du `RestClient` ?
+
+## RestClient Filter Interceptor
+// Dans votre méthode de build ou de configuration
+public ClientHttpRequestInterceptor oauthInterceptor(OAuth2AuthorizedClientManager authorizedClientManager, String registrationId) {
+    
+    return (request, body, execution) -> {
+        // 1. Création de la requête d'autorisation
+        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest
+                .withClientRegistrationId(registrationId)
+                .principal(SecurityContextHolder.getContext().getAuthentication())
+                .build();
+
+        // 2. Récupération du client autorisé (synchrone)
+        OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
+
+        // 3. Ajout du token Bearer aux headers
+        if (authorizedClient != null && authorizedClient.getAccessToken() != null) {
+            request.getHeaders().setBearerAuth(authorizedClient.getAccessToken().getTokenValue());
+        }
+
+        return execution.execute(request, body);
+    };
+}
