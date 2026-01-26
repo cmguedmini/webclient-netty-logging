@@ -92,3 +92,45 @@ public ClientHttpRequestInterceptor oauthInterceptor(OAuth2AuthorizedClientManag
         return execution.execute(request, body);
     };
 }
+
+## buildRestClient
+
+public RestClient buildRestClient(final String baseUrl,
+                                  final @Valid SslProperties ssl,
+                                  final Duration connectionTimeout, 
+                                  final Duration responseTimeout, 
+                                  final DataSize maxInMemorySize, 
+                                  final HttpHeaders defaultHeaders, 
+                                  final List<ClientHttpRequestInterceptor> interceptors, // Changement ici
+                                  final ConnectionProperties connectionProvider) {
+
+    // 1. On garde votre logique Netty existante
+    final HttpClient nettyHttpClient = buildNettyHttpClient(connectionTimeout, responseTimeout, ssl, connectionProvider);
+
+    // 2. On encapsule Netty dans une Factory compatible RestClient
+    final ReactorClientHttpRequestFactory requestFactory = new ReactorClientHttpRequestFactory(nettyHttpClient);
+
+    // 3. Construction du RestClient
+    return RestClient.builder()
+            .baseUrl(baseUrl)
+            .requestFactory(requestFactory) // Utilise Netty en dessous
+            .defaultStatusHandler(HttpStatusCode::isError, (request, response) -> {
+                throw toRestTemplateException(response);
+            })
+            .defaultHeaders(h -> {
+                h.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+                if (defaultHeaders != null) h.addAll(defaultHeaders);
+            })
+            // Équivalent du maxInMemorySize (via le message converter)
+            .messageConverters(converters -> {
+                 converters.stream()
+                    .filter(MappingJackson2HttpMessageConverter.class::isInstance)
+                    .map(MappingJackson2HttpMessageConverter.class::cast)
+                    .forEach(c -> c.setObjectMapper(objectMapper));
+            })
+            // Remplacement des filters par des interceptors
+            .interceptors(actualInterceptors -> {
+                if (interceptors != null) actualInterceptors.addAll(interceptors);
+            })
+            .build();
+}
