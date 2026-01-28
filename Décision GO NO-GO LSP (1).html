@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DÉCISION GO/NO-GO : Plateforme Services Bibliothèque & Migration Cloud</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .presentation {
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        .slide {
+            width: 960px;
+            height: 540px;
+            margin: 0 auto 30px;
+            display: flex;
+            flex-direction: column;
+            padding: 50px;
+            background: #020617;
+            color: #f1f5f9;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            page-break-after: always;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide.title-slide {
+            background: linear-gradient(135deg, #0c4a6e 0%, #0d5f8a 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .slide h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+        }
+        
+        .slide h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #0ea5e9;
+            border-bottom: 2px solid #0ea5e9;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .title-slide h2 {
+            border: none;
+            color: #ffffff;
+            font-size: 1.6rem;
+            margin-bottom: 30px;
+        }
+        
+        .slide h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #0ea5e9;
+            margin-top: 20px;
+            margin-bottom: 12px;
+        }
+        
+        .slide h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-top: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .title-slide p {
+            font-size: 1.1rem;
+            margin: 8px 0;
+            opacity: 0.95;
+        }
+        
+        p, li, td {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+        }
+        
+        ul li, ol li {
+            margin-bottom: 8px;
+        }
+        
+        .metric-box {
+            background: #1e293b;
+            border-left: 3px solid #0ea5e9;
+            padding: 12px 14px;
+            margin: 12px 0;
+            border-radius: 4px;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+        
+        .metric-box strong {
+            color: #0ea5e9;
+        }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
+            color: #ecfdf5;
+            border-radius: 6px;
+            padding: 16px 18px;
+            text-align: center;
+            margin: 15px 0;
+            border-left: 4px solid #14b8a6;
+        }
+        
+        .recommendation-box h3 {
+            color: #ffffff;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 1.3rem;
+        }
+        
+        .recommendation-box p {
+            color: #ecfdf5;
+            margin: 4px 0;
+            font-size: 0.93rem;
+        }
+        
+        .checklist {
+            list-style: none;
+            margin: 12px 0;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #14b8a6;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+        
+        th {
+            background: #1e293b;
+            color: #e2e8f0;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid #0ea5e9;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #1f2937;
+        }
+        
+        tr:hover {
+            background: rgba(56, 189, 248, 0.05);
+        }
+        
+        .ao-ref {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, #0ea5e9, transparent);
+            margin: 15px 0;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 12px 0;
+        }
+        
+        .grid-item {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        
+        .grid-item h4 {
+            color: #0ea5e9;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        
+        .grid-item ul {
+            margin-left: 18px;
+            font-size: 0.9rem;
+        }
+        
+        .risk-high {
+            background: #5a2d2d;
+            color: #f8d7da;
+            padding: 10px 12px;
+            border-left: 3px solid #c92a2a;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        
+        .footer-note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #1f2937;
+        }
+        
+        .download-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.4);
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+            
+            .slide {
+                margin-bottom: 0;
+                box-shadow: none;
+                page-break-after: always;
+                border-radius: 0;
+            }
+            
+            .download-btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="presentation">
+
+<!-- SLIDE 1: TITRE -->
+<section class="slide title-slide">
+    <h1>DÉCISION GO/NO-GO</h1>
+    <h2>Plateforme Services Bibliothèque (LSP) + Migration Cloud</h2>
+    <p>Office des Publications de la Commission Européenne</p>
+    <p>Marché : EC-OP2025OP0027</p>
+    <p style="margin-top: 20px; font-size: 1.15rem;"><strong>Recommandation : ✅ GO (conditionnel)</strong></p>
+    <p>28 janvier 2026</p>
+</section>
+
+<!-- SLIDE 2: RÉSUMÉ EXÉCUTIF -->
+<section class="slide">
+    <h2>Résumé exécutif <span class="ao-ref">[AO Sec. 1.1, Annexes 12-18]</span></h2>
+    
+    <h3>Ce que nous procurons</h3>
+    <div class="metric-box">
+        <strong>Plateforme intégrée complète (SaaS Cloud)</strong><br>
+        LSP + RDS + Mobilité + Analytiques | Acquisitions • E-ressources • Métadonnées • Découverte • Circulation • PEB • Analytics
+    </div>
+    
+    <h3 style="margin-top: 15px;">Exigences critiques (non-négociables)</h3>
+    <ul style="margin-top: 8px; font-size: 0.9rem;">
+        <li>🔒 <strong>100% données UE</strong> – Au repos & en transit ; CDN statique seulement</li>
+        <li>🔐 <strong>Sécurité renforcée</strong> – EAL-2 min → EAL-4 ; Baseline Commission</li>
+        <li>👥 <strong>Multi-institutionnel</strong> – 5+ institutions, 100K+ users, gouvernance partagée</li>
+        <li>🤖 <strong>IA conformité UE</strong> – Zéro pratiques interdites ; Loi 2024/1689</li>
+    </ul>
+    
+    <div class="recommendation-box">
+        <h3>✅ GO sous conditions strictes</h3>
+        <p><strong>Timeline :</strong> 18–24 mois | <strong>Budget :</strong> ~5M€ sur 3 ans</p>
+    </div>
+</section>
+
+<!-- SLIDE 3: EXIGENCE CRITIQUE 1 - SOUVERAINETÉ DONNÉES -->
+<section class="slide">
+    <h2>🔴 Exigence critique : Souveraineté données UE <span class="ao-ref">[Annexe 12 ; AO 3.2]</span></h2>
+    
+    <div class="metric-box">
+        <strong>Non-négociable absolu :</strong> toutes les données résidentes 100% en UE
+    </div>
+    
+    <h3>Prescriptions (Annexe 12)</h3>
+    <ul style="margin-top: 8px; font-size: 0.92rem;">
+        <li>✓ Données au repos : centres UE uniquement (FR, DE, NL, ES, IT)</li>
+        <li>✓ Données en transit : TLS 1.2+ ; zéro transit hors UE</li>
+        <li>✓ Sauvegardes & DR : intra-UE seulement</li>
+        <li>✓ CDN : contenu statique public seulement</li>
+        <li>✓ Aucune auto-scalabilité vers régions non-UE</li>
+        <li>✓ Export complet : MARC21, JSON, CSV, XML</li>
+    </ul>
+    
+    <h3 style="margin-top: 12px;">Vérifications avant GO</h3>
+    <table style="font-size: 0.82rem;">
+        <tr>
+            <th style="width: 35%;">Vérification</th>
+            <th style="width: 40%;">Méthode</th>
+            <th style="width: 25%;">Moment</th>
+        </tr>
+        <tr>
+            <td>Infrastructure cloud</td>
+            <td>Audit tech + audit indépendant</td>
+            <td>Phase 2</td>
+        </tr>
+        <tr>
+            <td>Localisation serveurs</td>
+            <td>Certificat data centre</td>
+            <td>Phase 1</td>
+        </tr>
+        <tr>
+            <td>DPA (traitement données)</td>
+            <td>Accord contractuel</td>
+            <td>Avant sig.</td>
+        </tr>
+        <tr>
+            <td>Clauses Cloud Act/FISA</td>
+            <td>Revue juridique</td>
+            <td>Phase 1</td>
+        </tr>
+    </table>
+</section>
+
+<!-- SLIDE 4: EXIGENCE CRITIQUE 2 - SÉCURITÉ -->
+<section class="slide">
+    <h2>🔴 Exigence critique : Sécurité & Baseline Commission <span class="ao-ref">[Annexe 3 ; FWC 12043]</span></h2>
+    
+    <h3>Contrôles NIST non-négociables</h3>
+    <table style="font-size: 0.82rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 15%;">Contrôle</th>
+            <th style="width: 45%;">Exigence</th>
+            <th style="width: 20%;">Complexité</th>
+        </tr>
+        <tr>
+            <td>SC-8</td>
+            <td>Chiffrement en transit (HTTPS/SFTP)</td>
+            <td>Standard</td>
+        </tr>
+        <tr>
+            <td>SC-2</td>
+            <td>Isolation logique & physique multi-tenant</td>
+            <td>Complexe</td>
+        </tr>
+        <tr>
+            <td>AC-6</td>
+            <td>Moindre privilège, séparation rôles</td>
+            <td>Complexe</td>
+        </tr>
+        <tr>
+            <td>SI-4</td>
+            <td>Surveillance 24/7 & alertes</td>
+            <td>Coûteux</td>
+        </tr>
+    </table>
+    
+    <div class="metric-box" style="margin-top: 12px;">
+        <strong>Point critique :</strong> Chiffrement colonne données sensibles OU double-clé (key-split) ; aucune personne seule ne doit voir données en clair.
+    </div>
+    
+    <h3 style="margin-top: 10px;">Certification requise</h3>
+    <ul style="font-size: 0.9rem;">
+        <li>✓ EAL-2 minimum à Go-Live</li>
+        <li>✓ Feuille de route EAL-4 contractuelle (18–36 mois)</li>
+    </ul>
+</section>
+
+<!-- SLIDE 5: GOUVERNANCE MULTI-INSTITUTIONNELLE -->
+<section class="slide">
+    <h2>🔴 Risque majeur : Gouvernance multi-institutionnelle <span class="ao-ref">[Annexe 16 ; AO 5.8]</span></h2>
+    
+    <h3>Complexité du terrain</h3>
+    <ul style="font-size: 0.92rem; margin-top: 8px;">
+        <li>👥 5+ institutions, 100K+ utilisateurs</li>
+        <li>📍 Multi-sites : Bruxelles, Luxembourg, Italie, délégations mondiales</li>
+        <li>📚 Collections mixtes : fonds communs + collections restreintes</li>
+        <li>💰 Budgets séparés par institution</li>
+        <li>🔗 Catalogue Union + catalogues locaux</li>
+        <li>🌐 24 langues UE (EN, FR, DE prioritaires)</li>
+    </ul>
+    
+    <div class="risk-high">
+        <strong>Risque critique :</strong> Une institution voit les données sensibles d'une autre (budgets, collections, profils d'accès) = crise politique
+    </div>
+</section>
+
+<!-- SLIDE 6: MULTI-INSTITUTIONNEL ATTÉNUATION -->
+<section class="slide">
+    <h2>Multi-institutionnel : atténuation AVANT GO <span class="ao-ref">[Annexe 16 ; AO 5.8]</span></h2>
+    
+    <h3>Actions obligatoires</h3>
+    <ul class="checklist" style="font-size: 0.92rem;">
+        <li>Créer comité gouvernance multi-institutionnel</li>
+        <li>Documenter modèle propriété & isolation données</li>
+        <li>Exiger références fournisseur : multi-location similaires</li>
+        <li>Tester isolation données en PoC</li>
+        <li>UAT : scénarios cross-institution & tentatives fuite</li>
+    </ul>
+    
+    <div class="metric-box" style="margin-top: 15px;">
+        <strong>Validation :</strong> Aucun accès croisé possible entre institutions = condition pré-signature
+    </div>
+</section>
+
+<!-- SLIDE 7: SOLUTIONS LSP - COMPARAISON -->
+<section class="slide">
+    <h2>💡 Option A : Solutions LSP (comparaison) <span class="ao-ref">[AO 3.1]</span></h2>
+    
+    <h3>Candidats : Critère LSP+RDS natif intégré</h3>
+    <table style="font-size: 0.78rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 15%;">Solution</th>
+            <th style="width: 12%;">LSP</th>
+            <th style="width: 12%;">RDS</th>
+            <th style="width: 15%;">Intégration</th>
+            <th style="width: 15%;">Cloud Act</th>
+            <th style="width: 15%;">Statut</th>
+        </tr>
+        <tr>
+            <td><strong>Ex Libris Alma</strong></td>
+            <td>✅ Alma</td>
+            <td>✅ Primo</td>
+            <td><strong>Native</strong></td>
+            <td>🔴 OUI</td>
+            <td>⚠️ COND.</td>
+        </tr>
+        <tr>
+            <td><strong>OCLC WorldShare</strong></td>
+            <td>✅ WMS</td>
+            <td>✅ WorldCat</td>
+            <td><strong>Native</strong></td>
+            <td>🔴 OUI</td>
+            <td>❌ REJETÉ</td>
+        </tr>
+        <tr>
+            <td><strong>Axiell Aurora</strong></td>
+            <td>✅ Aurora</td>
+            <td>❌ Portal</td>
+            <td><strong>Séparée</strong></td>
+            <td>🟢 NON</td>
+            <td>❌ REJETÉ</td>
+        </tr>
+        <tr>
+            <td><strong>FOLIO</strong></td>
+            <td>✅ FOLIO</td>
+            <td>✅ Microservices</td>
+            <td><strong>Native</strong></td>
+            <td>🟡 PARTIEL</td>
+            <td>🥇 PRIMAIRE</td>
+        </tr>
+    </table>
+</section>
+
+<!-- SLIDE 8: CLOUD ACT FISA CRITIQUE -->
+<section class="slide">
+    <h2>⚠️ Cloud Act / FISA : Critère éliminatoire <span class="ao-ref">[AO Sec. 3.2]</span></h2>
+    
+    <h3>Risques critiques</h3>
+    <ul style="font-size: 0.9rem; margin-top: 8px;">
+        <li><strong>Clarivate/OCLC = entreprises US :</strong> soumises Cloud Act + FISA 702</li>
+        <li><strong>Impact :</strong> autorités US exigent accès données même en UE</li>
+        <li><strong>Probabilité :</strong> Élevée (approche globale US intelligence)</li>
+        <li><strong>Sévérité :</strong> Critique (violation GDPR + souveraineté)</li>
+    </ul>
+    
+    <h3 style="margin-top: 12px;">Recommandation</h3>
+    <div class="recommendation-box">
+        <p><strong>FOLIO + OVHcloud = Prioritaire</strong><br>
+        Élimine risque Cloud Act completement (open-source UE + cloud souverain)</p>
+    </div>
+</section>
+
+<!-- SLIDE 9: HÉBERGEMENT CLOUD -->
+<section class="slide">
+    <h2>☁️ Option B : Hébergement cloud <span class="ao-ref">[AO 3.2]</span></h2>
+    
+    <div class="grid-2">
+        <div class="grid-item">
+            <h4>🥇 OVHcloud (RECOMMANDÉ)</h4>
+            <ul style="font-size: 0.88rem;">
+                <li>Cloud souverain UE</li>
+                <li>SecNumCloud certifié</li>
+                <li>Centres FR/DE/NL</li>
+                <li>Conformité maximale</li>
+            </ul>
+        </div>
+        <div class="grid-item">
+            <h4>🥈 AWS UE (ALTERNATIVE)</h4>
+            <ul style="font-size: 0.88rem;">
+                <li>Services étendus</li>
+                <li>Régions eu-* (FR, IR, DE)</li>
+                <li>DPA robuste requis</li>
+                <li>Coût moyen-élevé</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="grid-item">
+            <h4>🥉 Azure UE</h4>
+            <ul style="font-size: 0.88rem;">
+                <li>Offre entreprise</li>
+                <li>Centres NL, DE</li>
+                <li>Contraintes Cloud Act</li>
+                <li>Coût compétitif</li>
+            </ul>
+        </div>
+        <div class="grid-item">
+            <h4>Outscale</h4>
+            <ul style="font-size: 0.88rem;">
+                <li>Souverain UE</li>
+                <li>Services limités</li>
+                <li>Pas production-ready</li>
+                <li>Très compétitif</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- SLIDE 10: FEUILLE DE ROUTE -->
+<section class="slide">
+    <h2>📅 Feuille de route d'implémentation <span class="ao-ref">[AO 5.1]</span></h2>
+    
+    <h3>Phases (18–24 mois)</h3>
+    <ul style="font-size: 0.92rem; margin-top: 8px;">
+        <li><strong>Phase 1 (M1–M3) :</strong> Sélection LSP + cloud, négociation contrats</li>
+        <li><strong>Phase 2 (M3–M6) :</strong> Découverte, design sécurité & intégrations</li>
+        <li><strong>Phase 3 (M6–M15) :</strong> Config, migrations, intégrations, UAT</li>
+        <li><strong>Phase 4 (M15–M18) :</strong> Mise en production, formation</li>
+        <li><strong>Phase 5 (M18–M36+) :</strong> Exploitation stabilisée</li>
+    </ul>
+    
+    <div class="section-divider" style="margin-top: 15px;"></div>
+    
+    <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+        <div style="text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: #0ea5e9;">18–24</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Mois Go-Live</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: #0ea5e9;">9</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Chemin critique</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: #0ea5e9;">5</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Institutions</div>
+        </div>
+    </div>
+</section>
+
+<!-- SLIDE 11: RISQUES CLÉS -->
+<section class="slide">
+    <h2>🎲 Risques clés & atténuation <span class="ao-ref">[Annexes 2–3]</span></h2>
+    
+    <h3>Risques critiques</h3>
+    <ul style="font-size: 0.9rem; margin-top: 8px;">
+        <li><strong>Migration données :</strong> migrations multiples + exploitation parallèle 2-4 sem</li>
+        <li><strong>Multi-location :</strong> config fine droits + tests croisés + audit tiers</li>
+        <li><strong>Admin malveillant :</strong> chiffrement colonne + journalisation forte</li>
+        <li><strong>Conformité IA :</strong> inventaire features IA + audit éthique</li>
+    </ul>
+    
+    <h3 style="margin-top: 12px;">Risques élevés (mitigation contractuelle)</h3>
+    <ul style="font-size: 0.9rem; margin-top: 8px;">
+        <li>Procédure sortie & portabilité données complète</li>
+        <li>Performance sous charge (100K utilisateurs)</li>
+        <li>Accessibilité WCAG 2.1 + tests post-Go</li>
+    </ul>
+</section>
+
+<!-- SLIDE 12: CADRE GO/NO-GO -->
+<section class="slide">
+    <h2>✅ Cadre de décision GO/NO-GO <span class="ao-ref">[AO 7.1]</span></h2>
+    
+    <h3>Critères GO (tous VRAIS)</h3>
+    <ul class="checklist" style="font-size: 0.88rem;">
+        <li>Fournisseur LSP+RDS natif intégré choisi (AO § 3.1)</li>
+        <li>Résidence 100% UE contractuelle & vérifiable</li>
+        <li>Cadre sécurité approuvé (baseline Commission, EAL-2)</li>
+        <li>Cloud Act/FISA : risque acceptable ou nul</li>
+        <li>Calendrier 18–24 mois validé</li>
+        <li>Gouvernance multi-institutionnelle approuvée</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px;">Critères NO-GO (1 seul = BLOCAGE)</h3>
+    <ul style="list-style: none; margin-left: 0; font-size: 0.88rem; margin-top: 6px;">
+        <li class="risk-high" style="padding: 6px 10px; margin-bottom: 4px;">LSP+RDS non natif intégré</li>
+        <li class="risk-high" style="padding: 6px 10px; margin-bottom: 4px;">Résidence 100% UE impossible</li>
+        <li class="risk-high" style="padding: 6px 10px;">Cloud Act/FISA inacceptable sans mitigations renforcées</li>
+    </ul>
+</section>
+
+<!-- SLIDE 13: RECOMMANDATION FINALE -->
+<section class="slide">
+    <h2>🎯 Recommandation finale <span class="ao-ref">[Annexes 1–18 ; FWC 12043]</span></h2>
+    
+    <div class="recommendation-box">
+        <h3>✅ GO CONDITIONNEL – Priorité Souveraineté</h3>
+        <p><strong>Lancer RFQ/RFI & appel d'offres</strong> avec bloc conditions non-négociables pré-signature</p>
+    </div>
+    
+    <h3 style="margin-top: 12px;">Priorisation fournisseurs</h3>
+    <ul class="checklist" style="font-size: 0.88rem;">
+        <li>🥇 Primaire : FOLIO + OVHcloud (souverain complet)</li>
+        <li>🥈 Secondaire : Alma + OVHcloud + mitigations Cloud Act renforcées</li>
+        <li>❌ Exclu : OCLC, Axiell, AWS/Azure sans DPA renforcé</li>
+    </ul>
+    
+    <div class="footer-note">
+        <p><strong>Conditions pré-signature :</strong> Résidence 100% UE formalisée • EAL-2 certification • Zero Cloud Act risk • Audit tiers annuel • DPA avec pénalités • Portabilité données • Isolation multi-institution PoC</p>
+    </div>
+</section>
+
+</div>
+
+<a href="#" onclick="window.print(); return false;" class="download-btn">📥 Télécharger / Imprimer</a>
+
+</body>
+</html>
