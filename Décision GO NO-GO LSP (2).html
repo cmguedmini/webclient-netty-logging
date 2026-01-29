@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DÉCISION GO/NO-GO : Plateforme Services Bibliothèque & Migration Cloud</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        
+        .presentation {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        
+        .slide {
+            width: 960px;
+            height: 540px;
+            margin: 0 auto 30px;
+            display: flex;
+            flex-direction: column;
+            padding: 50px;
+            background: #020617;
+            color: #f1f5f9;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            page-break-after: always;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide.title-slide {
+            background: linear-gradient(135deg, #0c4a6e 0%, #0d5f8a 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .slide h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+        }
+        
+        .slide h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #0ea5e9;
+            border-bottom: 2px solid #0ea5e9;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .title-slide h2 {
+            border: none;
+            color: #ffffff;
+            font-size: 1.6rem;
+            margin-bottom: 30px;
+        }
+        
+        .slide h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #0ea5e9;
+            margin-top: 20px;
+            margin-bottom: 12px;
+        }
+        
+        .slide h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-top: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .title-slide p {
+            font-size: 1.1rem;
+            margin: 8px 0;
+            opacity: 0.95;
+        }
+        
+        p, li, td {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+        }
+        
+        ul li, ol li {
+            margin-bottom: 8px;
+        }
+        
+        .metric-box {
+            background: #1e293b;
+            border-left: 3px solid #0ea5e9;
+            padding: 12px 14px;
+            margin: 12px 0;
+            border-radius: 4px;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+        
+        .metric-box strong {
+            color: #0ea5e9;
+        }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
+            color: #ecfdf5;
+            border-radius: 6px;
+            padding: 16px 18px;
+            text-align: center;
+            margin: 15px 0;
+            border-left: 4px solid #14b8a6;
+        }
+        
+        .recommendation-box h3 {
+            color: #ffffff;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 1.3rem;
+        }
+        
+        .recommendation-box p {
+            color: #ecfdf5;
+            margin: 4px 0;
+            font-size: 0.93rem;
+        }
+        
+        .checklist {
+            list-style: none;
+            margin: 12px 0;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #14b8a6;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+        
+        th {
+            background: #1e293b;
+            color: #e2e8f0;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid #0ea5e9;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #1f2937;
+        }
+        
+        tr:hover {
+            background: rgba(56, 189, 248, 0.05);
+        }
+        
+        .ao-ref {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, #0ea5e9, transparent);
+            margin: 15px 0;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 12px 0;
+        }
+        
+        .grid-item {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        
+        .grid-item h4 {
+            color: #0ea5e9;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        
+        .grid-item ul {
+            margin-left: 18px;
+            font-size: 0.9rem;
+        }
+        
+        .risk-high {
+            background: #5a2d2d;
+            color: #f8d7da;
+            padding: 10px 12px;
+            border-left: 3px solid #c92a2a;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        
+        .risk-medium {
+            background: #5a3d2d;
+            color: #f9d9b0;
+            padding: 10px 12px;
+            border-left: 3px solid #d97706;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        
+        .risk-low {
+            background: #2d4a3d;
+            color: #c6f6d5;
+            padding: 10px 12px;
+            border-left: 3px solid #10b981;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        
+        .footer-note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #1f2937;
+        }
+        
+        .tight-text {
+            font-size: 0.9rem;
+        }
+        
+        .highlight {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+        
+        .badge-critical {
+            background: #c92a2a;
+            color: #fff;
+        }
+        
+        .badge-warning {
+            background: #d97706;
+            color: #fff;
+        }
+        
+        .badge-success {
+            background: #10b981;
+            color: #fff;
+        }
+        
+        .vendor-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin: 8px 0;
+            font-size: 0.88rem;
+        }
+        
+        .vendor-card strong {
+            color: #38bdf8;
+        }
+        
+        .vendor-row {
+            display: grid;
+            grid-template-columns: 0.6fr 1.4fr;
+            gap: 10px;
+            margin: 8px 0;
+            font-size: 0.85rem;
+        }
+        
+        .vendor-label {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .vendor-data {
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="presentation">
+
+<!-- SLIDE 1: TITRE -->
+<section class="slide title-slide">
+    <h1>DÉCISION GO/NO-GO</h1>
+    <h2>Plateforme Services Bibliothèque (LSP) + Migration Cloud</h2>
+    <p>Office des Publications de la Commission Européenne</p>
+    <p>Marché : EC-OP2025OP0027 | Contrat-cadre Cloud SaaS</p>
+    <p style="margin-top: 20px; font-size: 1.15rem;"><strong>Recommandation : ✅ GO (conditionnel, strict)</strong></p>
+    <p style="font-size: 0.95rem;">Analyse complète | 29 janvier 2026</p>
+    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 15px;"><em>Présenté par : Équipe Gouvernance Numérique | Examiné par : Comité Pilotage Multi-Institutionnel</em></p>
+</section>
+
+<!-- SLIDE 2: SYNTHÈSE EXÉCUTIVE -->
+<section class="slide">
+    <h2>Synthèse exécutive & contexte <span class="ao-ref">[AO Sec. 1-2 ; Annexes 12-18]</span></h2>
+    
+    <h3>Demande de marché</h3>
+    <div class="metric-box">
+        <strong>Plateforme intégrée SaaS (Cloud)</strong><br>
+        LSP complète (acquisitions • ERM • métadonnées • découverte • circulation • PEB • analytics) + RDS (Resource Discovery Service) + applications mobiles + multi-institutionnel
+    </div>
+    
+    <h3 style="margin-top: 10px;">Étendue & ampleur</h3>
+    <ul style="font-size: 0.92rem; margin-top: 6px;">
+        <li><strong>Utilisateurs :</strong> jusqu'à 100 000 (CE ≈ 40 000, autres institutions ≈ 60 000)</li>
+        <li><strong>Institutions :</strong> 5+ (CE + autres organes/agences UE, 24 langues officielles)</li>
+        <li><strong>Collections :</strong> imprimées + électroniques + numériques, catalogues partagés + union catalogue</li>
+        <li><strong>Timeline :</strong> 18–24 mois (migration + déploiement + stabilisation)</li>
+        <li><strong>Budget estimé :</strong> ~5–6 M€ sur 3 ans (licences + migration + support)</li>
+    </ul>
+    
+    <div class="recommendation-box">
+        <h3>✅ GO CONDITIONNEL STRICT</h3>
+        <p><strong>Démarrer RFQ/RFI</strong> avec blocage contractuel des conditions critiques avant signature</p>
+    </div>
+</section>
+
+<!-- SLIDE 3: EXIGENCE CRITIQUE 1 - SOUVERAINETÉ DONNÉES -->
+<section class="slide">
+    <h2>🔴 Exigence critique #1 : Souveraineté données UE <span class="ao-ref">[Annexe 12 ; AO 3.2]</span></h2>
+    
+    <div class="metric-box">
+        <strong>ABSOLUE NON-NÉGOCIABLE :</strong> 100% données UE | Au repos & en transit | Aucun transfert hors UE
+    </div>
+    
+    <h3>Prescriptions contractuelles (Annexe 12)</h3>
+    <ul style="font-size: 0.90rem; margin-top: 6px;">
+        <li>✓ <strong>Centres données résidence :</strong> UE uniquement (France, Allemagne, Pays-Bas, Espagne, Italie, Belgique, Luxembourg préférés)</li>
+        <li>✓ <strong>TLS 1.2+</strong> en transit ; zéro transfert hors UE même temporaire</li>
+        <li>✓ <strong>Sauvegardes & DR :</strong> intra-UE seulement ; no failover US</li>
+        <li>✓ <strong>CDN :</strong> contenu statique/public UE uniquement</li>
+        <li>✓ <strong>Zéro auto-scalabilité</strong> vers régions non-UE</li>
+        <li>✓ <strong>Export complet :</strong> MARC21, JSON, CSV, XML sans frais (exit clause)</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px;">Blocages identifiés & atténuation</h3>
+    <table style="font-size: 0.82rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 25%;">Risque / Fournisseur</th>
+            <th style="width: 40%;">Situation actuelle</th>
+            <th style="width: 35%;">Atténuation requise</th>
+        </tr>
+        <tr>
+            <td><strong>Ex Libris (Clarivate/US)</strong></td>
+            <td>Cloud Act FISA 702 : autorités US accès possible</td>
+            <td>OVHcloud souverain + DPA renforcé + audit annuel</td>
+        </tr>
+        <tr>
+            <td><strong>OCLC (USA)</strong></td>
+            <td>Idem + WorldCat aux USA</td>
+            <td>Instance UE dédiée + contractualisation résidence 100%</td>
+        </tr>
+        <tr>
+            <td><strong>Axiell (Suède UE)</strong></td>
+            <td>Moins de risque Cloud Act</td>
+            <td>Vérifier Outscale/OVHcloud résidence réelle</td>
+        </tr>
+        <tr>
+            <td><strong>FOLIO (Index Data/US)</strong></td>
+            <td>Open-source + OVHcloud option</td>
+            <td>Signer hors Index Data, auto-déploiement OVHcloud</td>
+        </tr>
+    </table>
+</section>
+
+<!-- SLIDE 4: EXIGENCE CRITIQUE 2 - SÉCURITÉ RENFORCÉE -->
+<section class="slide">
+    <h2>🔴 Exigence critique #2 : Sécurité & Baseline Commission <span class="ao-ref">[Annexe 3 ; FWC 12043]</span></h2>
+    
+    <h3>Niveaux d'assurance & certifications</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0;">
+        <div style="background: #1e293b; padding: 10px; border-radius: 4px; border-left: 3px solid #f59e0b;">
+            <div style="color: #fbbf24; font-weight: 600; font-size: 0.9rem;">MINIMUM REQUIS</div>
+            <div style="font-size: 0.88rem; color: #e2e8f0; margin-top: 4px;">
+                <strong>EAL-2</strong> (Common Criteria)<br>
+                ou CSA STAR 1 structuré<br>
+                Feuille de route EAL-4 contractuelle
+            </div>
+        </div>
+        <div style="background: #1e293b; padding: 10px; border-radius: 4px; border-left: 3px solid #10b981;">
+            <div style="color: #6ee7b7; font-weight: 600; font-size: 0.9rem;">SOUHAITÉ</div>
+            <div style="font-size: 0.88rem; color: #e2e8f0; margin-top: 4px;">
+                <strong>ISO 27001</strong><br>
+                SOC 2 Type II<br>
+                Audits annuels indépendants
+            </div>
+        </div>
+    </div>
+    
+    <h3 style="margin-top: 10px;">Contrôles NIST prioritaires (non-négociables)</h3>
+    <ul style="font-size: 0.88rem; margin-top: 6px;">
+        <li><strong>SC-8 :</strong> Chiffrement en transit (HTTPS/SFTP) TLS 1.2+</li>
+        <li><strong>SC-28 :</strong> Chiffrement au repos (données sensibles, colonne ou database)</li>
+        <li><strong>AC-6 + IA-5 :</strong> Moindre privilège + MFA obligatoire + EU Login intégration</li>
+        <li><strong>SI-4 + AU-3 :</strong> Surveillance 24/7 + audit complet accès (admin included)</li>
+        <li><strong>🔑 CRITIQUE :</strong> Protection "admin malveillant" = double-clé ou chiffrement colonne (zéro déchiffrage solitaire)</li>
+    </ul>
+    
+    <div class="risk-high" style="font-size: 0.87rem;">
+        <strong>Piège majeur :</strong> Si clés encryption sous contractor control seulement → accès administrateur possible. Exiger key-split ou customer-managed keys.
+    </div>
+</section>
+
+<!-- SLIDE 5: EXIGENCE CRITIQUE 3 - MULTI-INSTITUTIONNEL -->
+<section class="slide">
+    <h2>🔴 Exigence critique #3 : Gouvernance multi-institutionnelle <span class="ao-ref">[Annexe 16 ; AO 5.8]</span></h2>
+    
+    <h3>Terrain complexe</h3>
+    <ul style="font-size: 0.91rem; margin-top: 8px;">
+        <li><strong>Entités :</strong> CE + 4+ autres institutions (Parlement, Conseil, Cour, Agences)</li>
+        <li><strong>Utilisateurs :</strong> 100 000+ staff, délégations mondiales, accès externe chercheurs</li>
+        <li><strong>Collections :</strong> catalogues mixtes (partagées + restreintes), budgets séparés, EULibCat (union catalogue existant)</li>
+        <li><strong>Langues :</strong> 24 langues UE (EN, FR, DE priorités) + multilingue UI/RDS obligatoire</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px;">Modèles d'architecture requis (à préciser avant GO)</h3>
+    <table style="font-size: 0.83rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 20%;">Modèle</th>
+            <th style="width: 35%;">Caractéristiques</th>
+            <th style="width: 20%;">Complexité</th>
+            <th style="width: 25%;">Risque isolation</th>
+        </tr>
+        <tr>
+            <td><strong>Union Catalogue</strong></td>
+            <td>Records agrégés, holdings locaux, prêts/découverte centralisés</td>
+            <td>🔴 Très haut</td>
+            <td>Fuite données entre institutions</td>
+        </tr>
+        <tr>
+            <td><strong>RDS multiples</strong></td>
+            <td>LSP partagé, interfaces de découverte séparées par institution</td>
+            <td>🟠 Haut</td>
+            <td>Moyen (isolation RDS)</td>
+        </tr>
+        <tr>
+            <td><strong>Instances séparées</strong></td>
+            <td>LSP/RDS indépendants par institution, PEB/acquisitions fédérées</td>
+            <td>🟢 Bas</td>
+            <td>Minimal (isolation complète)</td>
+        </tr>
+    </table>
+    
+    <div class="risk-high" style="font-size: 0.87rem; margin-top: 10px;">
+        <strong>Crise politique potentielle :</strong> accès aux budgets d'acquisition ou collections restreintes d'une autre institution → résolution immédiate requise.
+    </div>
+</section>
+
+<!-- SLIDE 6: IA & CONFORMITÉ LEGALTECH -->
+<section class="slide">
+    <h2>🟠 Exigence majeure : IA Act & Conformité légale <span class="ao-ref">[AO 3.8 ; Annexe 13]</span></h2>
+    
+    <h3>Loi IA UE (2024/1689) : pratiques interdites & fonctions optionnelles</h3>
+    <div class="metric-box">
+        <strong>INTERDITES :</strong> manipulation comportementale • scoring social • identification biométrique • scraping non-consenti • classement mérite basé IA
+    </div>
+    
+    <h3 style="margin-top: 10px;">Fonctions IA autorisées (si présentes, documenter)</h3>
+    <ul style="font-size: 0.90rem; margin-top: 6px;">
+        <li><span class="badge badge-success">✓ OPTIONNEL</span> Recommandations de ressources (basé historique utilisateur)</li>
+        <li><span class="badge badge-success">✓ OPTIONNEL</span> Sugg. catalogage (étiquetage métadonnées proposé)</li>
+        <li><span class="badge badge-success">✓ OPTIONNEL</span> Classement résultats recherche (pertinence)</li>
+        <li><span class="badge badge-warning">⚠️ À VÉRIFIER</span> Chatbot recherche (transparence requise)</li>
+        <li><span class="badge badge-critical">❌ INTERDITE</span> Profiling utilisateurs pour "décisions importantes"</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px;">Requête GO : inventaire complet fonctionnalités IA</h3>
+    <ul style="font-size: 0.88rem; margin-top: 6px; margin-left: 0; list-style: none;">
+        <li class="checklist">Lister chaque feature IA : nom, usage, modèle (LLM/ML/règles), désactivable</li>
+        <li class="checklist">Audit conformité AI Act (pratiques interdites : 0 point)</li>
+        <li class="checklist">Transparence utilisateur : disclaimers, consentement optionnel</li>
+        <li class="checklist">Documentation VPAT technique (explicabilité, absence biais)</li>
+    </ul>
+</section>
+
+<!-- SLIDE 7: INDEX DÉCOUVERTE & RDS -->
+<section class="slide">
+    <h2>📊 Exigence fonctionnelle : Index découverte & RDS <span class="ao-ref">[Annexe 17 ; AO 5.4]</span></h2>
+    
+    <h3>Couverture minimale de la Knowledge Base (75%+ requis)</h3>
+    <div style="background: #1e293b; padding: 10px 12px; border-radius: 4px; margin: 10px 0; font-size: 0.88rem;">
+        <strong>Annex 17 :  ≈ 200+ ressources majeure à couvrir</strong><br>
+        Éditeurs clés : Elsevier, Springer, Oxford, Cambridge, JSTOR, EBSCO, Wiley, De Gruyter, Kluwer, HeinOnline, Cairn, OECDILIB, UN, WB
+    </div>
+    
+    <h3 style="margin-top: 10px;">Couverture index proposée (évaluation par source)</h3>
+    <ul style="font-size: 0.88rem; margin-top: 6px;">
+        <li><strong>Métadonnées + abstracts :</strong> standard base (presque toutes sources)</li>
+        <li><strong>Full-text indexation :</strong> priorités pour JSTOR, Elsevier, Springer, Oxford</li>
+        <li><strong>SUSHI/COUNTER :</strong> usage analytics collecte (consortia)</li>
+        <li><strong>Facettes avancées :</strong> auteur, éditeur, langue, date, type document, domaine</li>
+        <li><strong>OpenURL integration :</strong> link resolver vers SFX / 360 Link</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px;">Risque : couverture insuffisante</h3>
+    <div class="risk-medium" style="font-size: 0.87rem;">
+        <strong>Alma/Primo standard:</strong> couvre ≈ 85-95% ressources. <strong>OCLC WorldShare:</strong> WorldCat ≈ 90%. <strong>FOLIO:</strong> intégration Elasticsearch dépend config. Vérifier références déploiements similarité.
+    </div>
+</section>
+
+<!-- SLIDE 8: ACCESSIBILITÉ WCAG 2.1 -->
+<section class="slide">
+    <h2>♿ Exigence forte : Accessibilité WCAG 2.1 <span class="ao-ref">[AO 3.9 ; Annexe 18]</span></h2>
+    
+    <h3>Critères obligatoires & souhaités</h3>
+    <table style="font-size: 0.82rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 25%;">Critère</th>
+            <th style="width: 20%;">Status</th>
+            <th style="width: 35%;">Exigence</th>
+            <th style="width: 20%;">Vérification</th>
+        </tr>
+        <tr>
+            <td>Navigation clavier</td>
+            <td>Obligatoire</td>
+            <td>100% interface sans souris (Tab, Enter, Esc)</td>
+            <td>User testing</td>
+        </tr>
+        <tr>
+            <td>Lecteurs écran</td>
+            <td>Obligatoire</td>
+            <td>ARIA labels, headings sémantiques, alt-text</td>
+            <td>NVDA/JAWS test</td>
+        </tr>
+        <tr>
+            <td>Contraste couleur</td>
+            <td>Obligatoire</td>
+            <td>AA (4.5:1 normal) / AAA (7:1 souhaité)</td>
+            <td>Axe DevTools</td>
+        </tr>
+        <tr>
+            <td>PDF/documents</td>
+            <td>Souhaité</td>
+            <td>PDF tagged (accessible), export HTML alt</td>
+            <td>PAC 3 / Adobe audit</td>
+        </tr>
+        <tr>
+            <td>VPAT annuel</td>
+            <td>Souhaité</td>
+            <td>Voluntary Product Accessibility Template + audit tiers</td>
+            <td>Documentation</td>
+        </tr>
+    </table>
+    
+    <div class="metric-box" style="margin-top: 10px;">
+        <strong>Considération :</strong> Alma & FOLIO déjà WCAG 2.1 AA certifiés. OCLC/Axiell à vérifier. Audit indépendant AVANT Go-Live requis.
+    </div>
+</section>
+
+<!-- SLIDE 9: SOLUTIONS CANDIDATES - COMPARAISON -->
+<section class="slide">
+    <h2>💡 Solutions LSP candidates & analyse <span class="ao-ref">[AO 3.1]</span></h2>
+    
+    <div class="vendor-card">
+        <div class="vendor-row">
+            <div class="vendor-label">🥇 Recommandé :</div>
+            <div class="vendor-data"><strong>Ex Libris Alma (Clarivate)</strong> + OVHcloud</div>
+        </div>
+        <div style="font-size: 0.84rem; color: #cbd5e1; padding-left: 0; margin-top: 4px;">
+            <span class="badge badge-success">95% Conformité</span> <span class="badge badge-warning">Cloud Act FISA</span><br>
+            ✓ Leader marché • Cloud-natif • RDS Primo • APIs REST • Multi-tenant ✓<br>
+            ⚠️ Clarivate (US) → Atténuation : DPA renforcé OVHcloud + audit annuel
+        </div>
+    </div>
+    
+    <div class="vendor-card">
+        <div class="vendor-row">
+            <div class="vendor-label">🥈 Alternative 1 :</div>
+            <div class="vendor-data"><strong>OCLC WorldShare</strong> + AWS eu-*</div>
+        </div>
+        <div style="font-size: 0.84rem; color: #cbd5e1; padding-left: 0; margin-top: 4px;">
+            <span class="badge badge-warning">85% Conformité</span> <span class="badge badge-critical">Cloud Act</span><br>
+            ✓ Coopérative mondiale • WorldCat • Services ILL/PEB forts<br>
+            ⚠️ OCLC (US) + WorldCat résidence USA → Instance UE requise contractuellement
+        </div>
+    </div>
+    
+    <div class="vendor-card">
+        <div class="vendor-row">
+            <div class="vendor-label">🥉 Alternative 2 (UE) :</div>
+            <div class="vendor-data"><strong>Axiell Aurora</strong> + Outscale/OVHcloud</div>
+        </div>
+        <div style="font-size: 0.84rem; color: #cbd5e1; padding-left: 0; margin-top: 4px;">
+            <span class="badge badge-success">75% Conformité</span> <span class="badge badge-success">UE-based</span><br>
+            ✓ Acteur UE (Suède) • Zéro Cloud Act • Customisation forte<br>
+            ⚠️ Multi-institutionnel basique (instances séparées) • RDS moins riche
+        </div>
+    </div>
+    
+    <div class="vendor-card">
+        <div class="vendor-row">
+            <div class="vendor-label">🚀 Émergent (innovant) :</div>
+            <div class="vendor-data"><strong>FOLIO</strong> (open-source) + OVHcloud</div>
+        </div>
+        <div style="font-size: 0.84rem; color: #cbd5e1; padding-left: 0; margin-top: 4px;">
+            <span class="badge badge-success">80% Conformité</span> <span class="badge badge-success">Zero Cloud Act</span><br>
+            ✓ Microservices • APIs REST • Liberté déploiement • UE-souverain<br>
+            ⚠️ Matériel produit (pas enterprise support certifié) • courbe d'apprentissage
+        </div>
+    </div>
+</section>
+
+<!-- SLIDE 10: HÉBERGEMENT CLOUD & SOUVERAINETÉ -->
+<section class="slide">
+    <h2>☁️ Hébergement cloud : options souveraineté <span class="ao-ref">[AO 3.2]</span></h2>
+    
+    <h3>Classement préférence (résidence UE + conformité)</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0;">
+        <div style="background: #1a472a; padding: 12px; border-radius: 6px; border-left: 4px solid #10b981;">
+            <div style="color: #6ee7b7; font-weight: 600; margin-bottom: 6px;">🥇 OVHcloud (SOUVERAIN FRANCE)</div>
+            <ul style="font-size: 0.85rem; list-style: none; margin: 0; padding: 0;">
+                <li>✓ Centres UE seulement (Paris, Strasbourg, Gravelines)</li>
+                <li>✓ SecNumCloud certified</li>
+                <li>✓ Zéro US jurisdiction</li>
+                <li>✓ Coût moyen-bas</li>
+            </ul>
+        </div>
+        <div style="background: #2a4a5a; padding: 12px; border-radius: 6px; border-left: 4px solid #0ea5e9;">
+            <div style="color: #0ea5e9; font-weight: 600; margin-bottom: 6px;">🥈 AWS UE (HYPERSCALEUR)</div>
+            <ul style="font-size: 0.85rem; list-style: none; margin: 0; padding: 0;">
+                <li>~ Régions eu-west-1 (IR), eu-central-1 (FRA), eu-north-1 (STH)</li>
+                <li>✓ Couverture services large</li>
+                <li>✓ DPA renforcé possible</li>
+                <li>⚠️ Cloud Act FISA juridiction US</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0;">
+        <div style="background: #3a3a2a; padding: 12px; border-radius: 6px; border-left: 4px solid #d97706;">
+            <div style="color: #fbbf24; font-weight: 600; margin-bottom: 6px;">🥉 Azure UE (MICROSOFT)</div>
+            <ul style="font-size: 0.85rem; list-style: none; margin: 0; padding: 0;">
+                <li>~ Centres NL, DE</li>
+                <li>✓ Services entreprise complets</li>
+                <li>✓ Tarification compétitive</li>
+                <li>⚠️ US jurisdiction (Microsoft/Seattle)</li>
+            </ul>
+        </div>
+        <div style="background: #2a3a3a; padding: 12px; border-radius: 6px; border-left: 4px solid #9ca3af;">
+            <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 6px;">❌ Google Cloud (NON RECOMMANDÉ)</div>
+            <ul style="font-size: 0.85rem; list-style: none; margin: 0; padding: 0;">
+                <li>⚠️ Région eu-west1 Belgique</li>
+                <li>~ Mais Google Inc. (USA)</li>
+                <li>❌ Cloud Act FISA fort risque</li>
+                <li>✗ Pas évalué favorablement</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="metric-box" style="margin-top: 10px;">
+        <strong>Ligne directrice :</strong> Privilégier socle souverain UE (OVHcloud SecNumCloud 3.2 ANSSI). Alternatives hyperscaleurs (AWS, Azure) seulement si justifiées par besoins techniques & contrats DPA renforcés signés pré-Go-Live.
+    </div>
+    
+    <div style="background: #1e293b; padding: 10px 12px; border-radius: 4px; margin-top: 10px; font-size: 0.85rem; border-left: 3px solid #22c55e;">
+        <strong style="color: #6ee7b7;">✓ Certification ANSSI SecNumCloud 3.2 :</strong> Mars 2025, Bare Metal Pod (datacenters Roubaix/Gravelines/Strasbourg). Public Cloud roadmap fin 2025. Zéro transfert données hors UE, personnel exclusivement européen, audit annuel ANSSI.
+    </div>
+</section>
+
+<!-- SLIDE 11: FEUILLE DE ROUTE IMPLÉMENTATION -->
+<section class="slide">
+    <h2>📅 Feuille de route déploiement (18–24 mois) <span class="ao-ref">[AO 6.1-6.6]</span></h2>
+    
+    <h3 style="font-size: 1.05rem;">Phases & jalons critiques</h3>
+    <ul style="font-size: 0.87rem; margin-top: 6px;">
+        <li><strong>Phase 1 (M1–M3) :</strong> Sélection fournisseur, signature FWC, discovery sessions institutions</li>
+        <li><strong>Phase 2 (M3–M6) :</strong> Inventaire données legacy, design architecture multi-institutionnel, audit sécurité baseline</li>
+        <li><strong>Phase 3 (M6–M15) :</strong> Configuration LSP/RDS, migrations test, intégrations (ERP, EU Login, PEB), UAT phased</li>
+        <li><strong>Phase 4 (M15–M18) :</strong> Go-Live production, support intensif 24/7, formation staff</li>
+        <li><strong>Phase 5+ (M18–M36) :</strong> Stabilisation, optimisation, évolutions fonctionnelles, feuille de route EAL-4 sécurité</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px; font-size: 1.05rem;">Chemin critique identifié</h3>
+    <table style="font-size: 0.82rem; margin-top: 6px;">
+        <tr>
+            <th>Tâche</th>
+            <th>Durée</th>
+            <th>Risque</th>
+        </tr>
+        <tr>
+            <td>Migration données (legacy systems → LSP)</td>
+            <td>4-6 mois</td>
+            <td>Intégrité données, doublons, non-convergence format</td>
+        </tr>
+        <tr>
+            <td>Intégrations critiques (ERP, EU Login, PEB)</td>
+            <td>3-4 mois</td>
+            <td>Latence, authentification, workflows manuels temporaires</td>
+        </tr>
+        <tr>
+            <td>Audit sécurité & compliance GO-LIVE</td>
+            <td>2-3 mois</td>
+            <td>Découvertes tardives, blocages non-conformité</td>
+        </tr>
+    </table>
+    
+    <div style="text-align: center; margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+        <div style="background: #1e293b; padding: 12px; border-radius: 4px;">
+            <div style="font-size: 1.6rem; font-weight: bold; color: #38bdf8;">18–24</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Mois Go-Live</div>
+        </div>
+        <div style="background: #1e293b; padding: 12px; border-radius: 4px;">
+            <div style="font-size: 1.6rem; font-weight: bold; color: #38bdf8;">9–12</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Mois migration critique</div>
+        </div>
+        <div style="background: #1e293b; padding: 12px; border-radius: 4px;">
+            <div style="font-size: 1.6rem; font-weight: bold; color: #38bdf8;">5+</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">Institutions UAT</div>
+        </div>
+    </div>
+</section>
+
+<!-- SLIDE 12: RISQUES CLÉS & MITIGATION -->
+<section class="slide">
+    <h2>🎲 Risques clés & stratégie d'atténuation <span class="ao-ref">[Multi-annexes]</span></h2>
+    
+    <h3>Risques CRITIQUES (blocants) = Mitigations contractuelles</h3>
+    <div class="risk-high" style="margin: 10px 0; padding: 12px;">
+        <strong>R1 : Migration données & intégrité</strong>
+        <p style="margin: 4px 0 6px 0; font-size: 0.86rem;">Perte/corruption/duplication records MARC, autorités, holdings sur 40+ ans</p>
+        <p style="margin: 0; font-size: 0.85rem;"><strong>→</strong> Tests migrations multiples contractuels + audit tiers + exploitation parallèle 2-4 semaines</p>
+    </div>
+    
+    <div class="risk-high" style="margin: 10px 0; padding: 12px;">
+        <strong>R2 : Isolation multi-institutionnel & fuite données</strong>
+        <p style="margin: 4px 0 6px 0; font-size: 0.86rem;">Accès cross-institution à budgets/collections/profils utilisateurs</p>
+        <p style="margin: 0; font-size: 0.85rem;"><strong>→</strong> PoC isolation + tests pénétration + audit architecture + monitoring SIEM 24/7</p>
+    </div>
+    
+    <div class="risk-high" style="margin: 10px 0; padding: 12px;">
+        <strong>R3 : Conformité IA Act & pratiques interdites</strong>
+        <p style="margin: 4px 0 6px 0; font-size: 0.86rem;">Features IA non-déclarées ou pratiques prohibées (profiling, social scoring)</p>
+        <p style="margin: 0; font-size: 0.85rem;"><strong>→</strong> Audit IA Act pré-Go-Live + inventory complet + désactivation features interdites</p>
+    </div>
+    
+    <h3 style="margin-top: 10px;">Risques ÉLEVÉS = Management contractuel + monitoring</h3>
+    <ul style="font-size: 0.85rem; margin-top: 6px;">
+        <li>⚠️ Performance sous charge (100K users) → Tests charge contractuels (SLA latence)</li>
+        <li>⚠️ Exit procedure & portabilité données → Export MARC/JSON/CSV sans coûts additionnels</li>
+        <li>⚠️ Accessibilité WCAG 2.1 → Audit annuel + VPAT + corrections correctives</li>
+        <li>⚠️ Intégrations PEB/ERP → APIs stabiles contractuelles + SLA compatibilité</li>
+    </ul>
+</section>
+
+<!-- SLIDE 13: CONDITIONS PRÉ-GO OBLIGATOIRES -->
+<section class="slide">
+    <h2>✅ Conditions pré-signature & GO-LIVE <span class="ao-ref">[Blocages contractuels]</span></h2>
+    
+    <h3 style="font-size: 1.05rem;">Phase 1 : AVANT signature FWC (Conditions de blocage absolues)</h3>
+    <ul class="checklist" style="font-size: 0.87rem;">
+        <li>Résidence 100% UE formalisée contractuellement + certificats datacentres</li>
+        <li>Baseline sécurité Commission approuvée + EAL-2 proof + feuille de route EAL-4</li>
+        <li>Conformité AI Act attestée (inventaire IA + audit pratiques interdites)</li>
+        <li>Modèle gouvernance multi-institutionnel approuvé par comité + isolation testé PoC</li>
+        <li>Exit procedure & portabilité données contractualisées (formats MARC, JSON, XML)</li>
+        <li>DPA signé + Annexes sécurité RGPD/Reg 2018/1725 + SLA avec pénalités</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px; font-size: 1.05rem;">Phase 2 : AVANT Go-Live (Conditions de déploiement)</h3>
+    <ul class="checklist" style="font-size: 0.87rem;">
+        <li>UAT 100% complète par chaque institution + sign-off formel</li>
+        <li>Audit sécurité indépendant NIST baseline + EAL-2 proof Go-Live</li>
+        <li>Audit accessibilité WCAG 2.1 AA + VPAT + corrections implémentées</li>
+        <li>Tests intégrations ERP/EU Login/PEB en condition production</li>
+        <li>Migrations test finales + audit intégrité données + rapport audit signé fournisseur + CA</li>
+        <li>Procédure support 24/7 et escalade incidents active</li>
+    </ul>
+    
+    <div class="recommendation-box">
+        <h3>🎯 Décision fin Phase 1</h3>
+        <p>Re-valider GO/NO-GO fin M3 (avant M6 investissements majeurs configuration)</p>
+    </div>
+</section>
+
+<!-- SLIDE 14: CADRE DÉCISION GO/NO-GO -->
+<section class="slide">
+    <h2>📋 Cadre décision GO/NO-GO final <span class="ao-ref">[Synthèse critères]</span></h2>
+    
+    <h3 style="font-size: 1.05rem;">✅ Critères GO (TOUS doivent être VRAIS)</h3>
+    <ul class="checklist" style="font-size: 0.88rem;">
+        <li>Fournisseur LSP + cloud choisis (ou shortlist 2-3) | résidence 100% UE contractuelle</li>
+        <li>Cadre sécurité accepté (baseline Commission EAL-2 + feuille route EAL-4)</li>
+        <li>Budget approuvé (~5-6 M€ sur 3 ans) + gouvernance projet établie</li>
+        <li>Modèle multi-institutionnel documenté & approuvé comité</li>
+        <li>Calendrier 18–24 mois réaliste & validé direction</li>
+        <li>Conformité IA Act & pratiques interdites documentées ZÉRO</li>
+        <li>Plan atténuation risques approuvé (migration, isolation, intégrations, accessibilité)</li>
+        <li>Contrats & DPA type révisés avec legal, blocages contractuels inclus</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px; font-size: 1.05rem;">❌ Critères NO-GO (UN SEUL suffit pour BLOQUER)</h3>
+    <div class="risk-high" style="padding: 12px; margin: 8px 0;">
+        <strong>NO-GO #1 :</strong> Résidence 100% UE impossible à garantir contractuellement
+    </div>
+    <div class="risk-high" style="padding: 12px; margin: 8px 0;">
+        <strong>NO-GO #2 :</strong> Gouvernance multi-institutionnel non-alignable ou isolation données impossible
+    </div>
+    <div class="risk-high" style="padding: 12px; margin: 8px 0;">
+        <strong>NO-GO #3 :</strong> Dépendance inacceptable Cloud Act/FISA 702 sans contre-mesures robustes contractuelles
+    </div>
+    <div class="risk-high" style="padding: 12px; margin: 8px 0;">
+        <strong>NO-GO #4 :</strong> Budget non-approuvé ou timeline irréaliste (< 18 mois)
+    </div>
+</section>
+
+<!-- SLIDE 15: RECOMMANDATION EXÉCUTIVE FINALE -->
+<section class="slide">
+    <h2>🎯 Recommandation FINALE & feuille de route <span class="ao-ref">[Synthèse]</span></h2>
+    <p style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 15px;"><strong>→ Voir aussi :</strong> [S1] Titre • [S2] Synthèse • [S3] Souveraineté UE • [S4] Sécurité • [S5] Multi-institutionnel • [S6] IA Act • [S7] RDS • [S8] Cloud • [S9] Solutions • [S10] Hébergement • [S11] Roadmap • [S12] Risques • [S13] Conditions • [S14] GO/NO-GO • [S15] Recommandation</p>
+    
+    <div class="recommendation-box" style="margin-bottom: 12px;">
+        <h3>✅ GO CONDITIONNEL STRICT</h3>
+        <p><strong>Lancer processus RFQ/RFI + appel d'offres immédiatement</strong> en intégrant blocages pré-signature & contractualisation rigoureuse des conditions critiques.</p>
+        <p style="font-size: 0.85rem; margin-top: 6px;"><strong>Coûteux en temps front :</strong> oui (~3-6 mois discovery + contrat). <strong>Risque nul ultérieurement :</strong> bien supérieur alternative.</p>
+        <p style="font-size: 0.83rem; margin-top: 8px; color: #ecfdf5;"><strong>⏱️ Timeline critique :</strong> Lancer RFI immédiatement (< 2 semaines) • Évaluation réponses + court-listing (M1-M2) • Audit legal + négociation contrats (M2-M3) • Re-GO/NO-GO fin M3</p>
+    </div>
+    
+    <h3 style="font-size: 1.05rem;">Étapes immédiates (prochaines 4 semaines)</h3>
+    <ul class="checklist" style="font-size: 0.86rem;">
+        <li>Créer comité pilotage multi-institutionnel + TdR governance</li>
+        <li>Valider budget & timeline auprès direction / PE / Conseil</li>
+        <li>Lancer RFI vendors (Alma, OCLC, Axiell, FOLIO) sur critères GO/NO-GO</li>
+        <li>Audit legal contrats FWC type + DPA + security baseline</li>
+        <li>Débuter discovery legacy systems (audit données, intégrations)</li>
+    </ul>
+    
+    <h3 style="margin-top: 10px; font-size: 1.05rem;">Prochaine révision décision : Fin M3 (re-GO/NO-GO)</h3>
+    <div class="metric-box">
+        <strong>Réévaluation fin Phase 1 :</strong> Réponses RFI + contrats avancés + budget = Go/No-Go M3 avant investissements M6+ configuration/migration
+    </div>
+    
+    <div class="footer-note" style="margin-top: 12px; font-size: 0.79rem;">
+        <p><strong>Document :</strong> Analyse GO/NO-GO complète EC-OP2025OP0027. Élaborée à partir des AO (Part 1-2), Annexes 1-18, FWC 12043, Baseline Commission sécurité. Présentée 29 janvier 2026.</p>
+        <p style="margin-top: 4px;"><strong>Confidentiel :</strong> Direction / Comité Pilotage / Équipe Projet</p>
+        <p style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 8px;"><strong>Gouvernance :</strong> Approval requis : DG OP (Directeur Général) • Comité Pilotage Multi-Institutionnel • EDPS (Data Protection Officer) pour RGPD compliance</p>
+        <p style="margin-top: 4px;"><strong>Références :</strong> [web:147] OVHcloud SecNumCloud 3.2 mars 2025 • [file:121] AO Technical Specs • [file:130] Annexe 12 Data Centres • [file:129] Annexe 11A Security Measures • [file:126] FWC 12043 Baseline • [file:128] Annexe 13 AI Form</p>
+    </div>
+</section>
+
+</div>
+
+<!-- SLIDE 16: ABRÉVIATIONS & GLOSSAIRE -->
+<section class="slide">
+    <h2>📚 Abréviations & Glossaire des mots-clés <span class="ao-ref">[Référence]</span></h2>
+    
+    <h3 style="font-size: 1.05rem;">Acronymes & organisations</h3>
+    <table style="font-size: 0.82rem; margin-top: 8px;">
+        <tr>
+            <th style="width: 20%;">Acronyme</th>
+            <th style="width: 50%;">Signification</th>
+            <th style="width: 30%;">Contexte</th>
+        </tr>
+        <tr>
+            <td><strong>AO</strong></td>
+            <td>Avis d'Appel d'Offres / Call for Tenders</td>
+            <td>EC-OP2025OP0027 (document principal)</td>
+        </tr>
+        <tr>
+            <td><strong>FWC</strong></td>
+            <td>Framework Contract / Contrat-cadre</td>
+            <td>Durée 3-5 ans avec renouvellements optionnels</td>
+        </tr>
+        <tr>
+            <td><strong>LSP</strong></td>
+            <td>Library Services Platform</td>
+            <td>Plateforme intégrée acquisitions + ERM + circulation + RDS</td>
+        </tr>
+        <tr>
+            <td><strong>RDS</strong></td>
+            <td>Resource Discovery Service</td>
+            <td>Interface utilisateur recherche/découverte (ex. Primo, Summon)</td>
+        </tr>
+        <tr>
+            <td><strong>SaaS</strong></td>
+            <td>Software as a Service</td>
+            <td>Logiciel hébergé cloud, accès navigateur, updates automatiques</td>
+        </tr>
+        <tr>
+            <td><strong>ERM</strong></td>
+            <td>Electronic Resource Management</td>
+            <td>Gestion e-resources (e-books, e-journals, bases de données)</td>
+        </tr>
+        <tr>
+            <td><strong>PEB / ILL</strong></td>
+            <td>Prêt Entre Bibliothèques / Interlibrary Loan</td>
+            <td>Prêts inter-institutionnels documents</td>
+        </tr>
+        <tr>
+            <td><strong>SUSHI / COUNTER</strong></td>
+            <td>Standardized Usage Statistics Harvesting Initiative</td>
+            <td>Protocoles collecte usage e-resources (analytics)</td>
+        </tr>
+        <tr>
+            <td><strong>MARC21</strong></td>
+            <td>Machine-Readable Cataloging 21st century</td>
+            <td>Standard format catalogage bibliographique</td>
+        </tr>
+        <tr>
+            <td><strong>OAI-PMH / Z39.50</strong></td>
+            <td>Open Archives Initiative Protocol for Metadata Harvesting</td>
+            <td>Protocoles interopérabilité catalogues</td>
+        </tr>
+        <tr>
+            <td><strong>EU Login</strong></td>
+            <td>European Commission digital identity system</td>
+            <td>SSO / authentification centralisée UE</td>
+        </tr>
+        <tr>
+            <td><strong>ANSSI</strong></td>
+            <td>Agence Nationale Sécurité Systèmes Information (France)</td>
+            <td>Certification sécurité cloud (SecNumCloud)</td>
+        </tr>
+        <tr>
+            <td><strong>NIST</strong></td>
+            <td>National Institute of Standards & Technology (USA)</td>
+            <td>Framework contrôles sécurité (SC-8, AC-6, etc.)</td>
+        </tr>
+        <tr>
+            <td><strong>EAL</strong></td>
+            <td>Evaluation Assurance Level (Common Criteria)</td>
+            <td>Niveaux certification sécurité (EAL-2 à EAL-7)</td>
+        </tr>
+        <tr>
+            <td><strong>CSA STAR</strong></td>
+            <td>Cloud Security Alliance Security Trust Assessment Register</td>
+            <td>Cadre audit sécurité cloud (alternative EAL)</td>
+        </tr>
+        <tr>
+            <td><strong>ISO 27001</strong></td>
+            <td>Information Security Management Systems</td>
+            <td>Certification management sécurité information</td>
+        </tr>
+        <tr>
+            <td><strong>SOC 2</strong></td>
+            <td>Service Organization Control 2 (AICPA)</td>
+            <td>Audit conformité contrôles internes prestataire cloud</td>
+        </tr>
+        <tr>
+            <td><strong>WCAG</strong></td>
+            <td>Web Content Accessibility Guidelines</td>
+            <td>Normes accessibilité web (niveau AA/AAA)</td>
+        </tr>
+        <tr>
+            <td><strong>VPAT</strong></td>
+            <td>Voluntary Product Accessibility Template</td>
+            <td>Document conformité accessibilité produit logiciel</td>
+        </tr>
+        <tr>
+            <td><strong>DPA</strong></td>
+            <td>Data Processing Agreement</td>
+            <td>Accord traitement données personnelles (RGPD)</td>
+        </tr>
+        <tr>
+            <td><strong>RGPD / GDPR</strong></td>
+            <td>Règlement Général Protection Données / General Data Protection Regulation</td>
+            <td>Loi UE 2016/679 (confidentialité données)</td>
+        </tr>
+        <tr>
+            <td><strong>Cloud Act / FISA 702</strong></td>
+            <td>Clarifying Lawful Overseas Use Data Act (USA 2018) / Foreign Intelligence Surveillance Act 702</td>
+            <td>Lois USA autorisant accès données UE par autorités US</td>
+        </tr>
+        <tr>
+            <td><strong>IA Act</strong></td>
+            <td>Loi Européenne sur l'Intelligence Artificielle (2024/1689)</td>
+            <td>Conformité risque IA, pratiques interdites, traçabilité</td>
+        </tr>
+        <tr>
+            <td><strong>SecNumCloud</strong></td>
+            <td>Certification ANSSI cloud souverain français</td>
+            <td>OVHcloud Bare Metal Pod (Roubaix/Gravelines/Strasbourg)</td>
+        </tr>
+        <tr>
+            <td><strong>OVHcloud</strong></td>
+            <td>Fournisseur cloud français (hébergement souverain)</td>
+            <td>Recommandé : SecNumCloud 3.2 (mars 2025)</td>
+        </tr>
+        <tr>
+            <td><strong>AWS / Azure</strong></td>
+            <td>Amazon Web Services / Microsoft Azure (hyperscaleurs)</td>
+            <td>Alternatives (Cloud Act FISA risk moyen-élevé)</td>
+        </tr>
+        <tr>
+            <td><strong>Alma / Primo</strong></td>
+            <td>Ex Libris LSP + RDS (leader marché)</td>
+            <td>Recommandé pour conformité + multi-institutionnel</td>
+        </tr>
+        <tr>
+            <td><strong>OCLC WorldShare</strong></td>
+            <td>Online Computer Library Center plateforme cloud</td>
+            <td>Alternative (Cloud Act FISA, coopérative mondiale)</td>
+        </tr>
+        <tr>
+            <td><strong>Axiell Aurora</strong></td>
+            <td>Plateforme LSP suédoise (acteur UE)</td>
+            <td>Alternative UE (zéro Cloud Act risk)</td>
+        </tr>
+        <tr>
+            <td><strong>FOLIO</strong></td>
+            <td>Library Services Platform open-source (Index Data)</td>
+            <td>Émergent / innovant (liberté déploiement OVHcloud)</td>
+        </tr>
+    </table>
+    
+    <h3 style="margin-top: 12px; font-size: 1.05rem;">Références slides</h3>
+    <ul style="font-size: 0.84rem; margin-top: 6px;">
+        <li><strong>[S1]</strong> Titre • <strong>[S2]</strong> Synthèse exécutive • <strong>[S3]</strong> Souveraineté données UE • <strong>[S4]</strong> Sécurité EAL • <strong>[S5]</strong> Multi-institutionnel</li>
+        <li><strong>[S6]</strong> IA Act • <strong>[S7]</strong> RDS & Index • <strong>[S8]</strong> Accessibilité WCAG • <strong>[S9]</strong> Solutions LSP • <strong>[S10]</strong> Hébergement cloud</li>
+        <li><strong>[S11]</strong> Roadmap • <strong>[S12]</strong> Risques clés • <strong>[S13]</strong> Conditions pré-signature • <strong>[S14]</strong> Cadre GO/NO-GO • <strong>[S15]</strong> Recommandation</li>
+        <li><strong>[S16]</strong> Abréviations & Glossaire (this slide)</li>
+    </ul>
+</section>
+
+</div>
+
+</body>
+</html>
