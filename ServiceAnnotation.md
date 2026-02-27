@@ -57,3 +57,28 @@ Résolution : Extraction de la liste des noms (multiXXXServer ou spring.applicat
 Comparaison : Vérification que chaque nom configuré possède un bean correspondant.
 
 Fail-Fast : Si un nom manque, levée d'une ServerMappingException interceptée par le FailureAnalyzer.
+
+[plantuml]
+----
+@startuml
+participant "YAML Config" as Y
+participant "Environment" as E
+participant "Context Spring" as C
+participant "Validation" as V
+
+Y -> E : Charge multiXXXServer
+E -> V : Fournit la liste (ou spring.app.name)
+C -> V : Fournit les Beans @XXXService
+V -> V : Compare les noms
+alt Erreur détectée
+    V -> C : Stop (ServerMappingException)
+else Succès
+    V -> C : Poursuite du démarrage
+end
+@enduml
+----
+
+[NOTE]
+====
+Une modification du nom dans le code sans mise à jour du YAML entraînera systématiquement un échec au démarrage en environnement de test ou de production.
+====
