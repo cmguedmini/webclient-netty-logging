@@ -1,0 +1,100 @@
+Voici une proposition de description de ticket Jira (en français, orientée équipe dev).
+
+***
+
+**Titre**  
+Erreur CADP_for_JAVA avec Java 21 / Spring Boot 3 – Problème JAXB et correctif dépendances
+
+**Contexte**  
+Nous avons migré un service utilisant le starter CADP_for_JAVA de la version Java 11 / Spring Boot 2.7.18 vers Java 21 / Spring Boot 3.x.  
+Depuis cette migration, les tests d’intégration qui utilisent la bibliothèque CADP_for_JAVA (version 8.17.1.000) échouent avec une exception liée à JAXB.
+
+**Erreur observée**  
+Lors de l’exécution des tests (ou au runtime), nous obtenons l’exception suivante :
+
+```text
+com.ingrian.security.nae.NAEException: Implementation of JAXB-API has not been found on module path or classpath
+    at com.ingrian.security.nae. ... 
+    ...
+Caused by: javax.xml.bind.JAXBException: Implementation of JAXB-API has not been found on module path or classpath
+    ...
+```
+
+Cette erreur provient du code interne de CADP (packages `com.ingrian.*`) qui s’appuie sur l’ancienne API JAXB (`javax.xml.bind.*`).  
+Or, avec Java 11+ puis Spring Boot 3, JAXB n’est plus fourni dans le JDK, et l’écosystème Spring a basculé majoritairement sur Jakarta (`jakarta.xml.bind.*`), ce qui crée un décalage avec la lib CADP encore basée sur `javax`.
+
+**Cause principale**  
+- CADP_for_JAVA 8.17.1.000 est compilé pour utiliser JAXB en `javax.xml.bind`.  
+- En Java 21 / Spring Boot 3, JAXB n’est plus inclus par défaut et nous n’avons pas les bonnes implémentations JAXB `javax.*` sur le classpath.  
+- Les dépendances ajoutées jusque-là ne correspondent pas exactement aux versions / artefacts recommandés par Thales (CADP) pour les environnements Java 11+.
+
+**Solution retenue**  
+Nous adoptons la solution préconisée par Thales : ajouter explicitement les dépendances JAXB **legacy** en `javax.*` (et non Jakarta) avec les versions recommandées.
+
+**Travaux à effectuer (équipe dev)**  
+
+1. **Mettre à jour le `pom.xml` du module qui utilise CADP_for_JAVA**  
+   Dans les dépendances du module (ou dans un BOM / `dependencyManagement` central si plus pertinent), ajouter les dépendances suivantes :
+
+```xml
+<!-- API JAXB legacy (javax) -->
+<dependency>
+  <groupId>javax.xml.bind</groupId>
+  <artifactId>jaxb-api</artifactId>
+  <version>2.3.1</version>
+</dependency>
+
+<!-- Implémentation JAXB (RI) -->
+<dependency>
+  <groupId>com.sun.xml.bind</groupId>
+  <artifactId>jaxb-impl</artifactId>
+  <version>2.3.1</version>
+</dependency>
+
+<!-- Core JAXB -->
+<dependency>
+  <groupId>com.sun.xml.bind</groupId>
+  <artifactId>jaxb-core</artifactId>
+  <version>2.3.0.1</version>
+</dependency>
+
+<!-- Activation (pour JAXB) -->
+<dependency>
+  <groupId>javax.activation</groupId>
+  <artifactId>javax.activation-api</artifactId>
+  <version>1.2.0</version>
+</dependency>
+```
+
+2. **S’assurer qu’il n’y a pas de conflit avec Jakarta JAXB**  
+   - Vérifier qu’aucune dépendance `jakarta.xml.bind-api` ou `org.glassfish.jaxb:jaxb-runtime` en version 3.x n’est présente sur le classpath du module CADP.  
+   - Si nécessaire, ajouter des exclusions sur les starters ou libs qui tireraient du Jakarta JAXB, par exemple :
+     ```xml
+     <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-XXX</artifactId>
+       <exclusions>
+         <exclusion>
+           <groupId>jakarta.xml.bind</groupId>
+           <artifactId>jakarta.xml.bind-api</artifactId>
+         </exclusion>
+       </exclusions>
+     </dependency>
+     ```
+
+3. **Recompiler et relancer les tests d’intégration CADP**  
+   - Vérifier que l’exception `NAEException: Implementation of JAXB-API has not been found...` disparait.  
+   - S’assurer que les scénarios de chiffrement / déchiffrement CADP fonctionnent comme avant la migration.
+
+**Points d’attention**  
+- Cette solution reste un compromis : on continue à utiliser JAXB `javax` (legacy) pour CADP dans un environnement Spring Boot 3 / Java 21 qui est plutôt orienté Jakarta.  
+- Si, à terme, une version CADP_for_JAVA compatible Jakarta / Java 21 est disponible, il faudra prévoir une nouvelle montée de version et un nettoyage des dépendances `javax.*`.
+
+**Critères d’acceptation**  
+- Les tests d’intégration utilisant CADP_for_JAVA passent à nouveau sur Java 21 / Spring Boot 3.  
+- L’exception `com.ingrian.security.nae.NAEException: Implementation of JAXB-API has not been found on module path or classpath` n’apparaît plus.  
+- Aucun autre module de l’application n’est impacté négativement par l’ajout de ces dépendances JAXB `javax`.  
+
+***
+
+Tu peux adapter le ton / nom du module / numéros de version Spring Boot exacts selon votre projet, mais la structure ci‑dessus devrait suffire pour que l’équipe dev comprenne quoi faire et pourquoi.
