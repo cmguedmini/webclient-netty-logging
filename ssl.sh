@@ -83,6 +83,27 @@ openssl x509 -req -in leaf.csr -CA inter.crt -CAkey inter.key -CAcreateserial \
 
 # Vérifie que tout est OK
 openssl verify -CAfile root.crt -untrusted inter.crt leaf.crt
+
+# 1. Concaténer la chaîne leaf → inter → root
+cat leaf.crt inter.crt root.crt > chain.pem
+
+# 2. Exporter en PKCS12 : clé privée leaf + certificat leaf + chaîne inter + root
+openssl pkcs12 -export \
+  -inkey leaf.key \
+  -in leaf.crt \
+  -certfile chain.pem \
+  -name leaf-cert \
+  -out leaf-chain.p12 \
+  -passout pass:password
+
+# 3. Conversion PKCS12 → JKS
+keytool -importkeystore \
+  -srckeystore leaf-chain.p12 \
+  -srcstoretype PKCS12 \
+  -srcstorepass password \
+  -destkeystore leaf-chain.jks \
+  -deststoretype JKS \
+  -deststorepass password
 ```
 
 À la fin, `openssl verify` doit afficher `leaf.crt: OK` (ou juste `OK`). [docs.openssl](https://docs.openssl.org/3.0/man1/openssl-verify/)
