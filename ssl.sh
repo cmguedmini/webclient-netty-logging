@@ -21,7 +21,6 @@ openssl req -new -key inter.key \
 
 openssl x509 -req -in inter.csr \
   -CA root.crt -CAkey root.key -CAcreateserial \
-  -extfile openssl_inter.conf -extensions v3_req \
   -out inter.crt -days 1825 -sha256
 
 
@@ -36,11 +35,11 @@ openssl x509 -req -in leaf.csr \
   -CA inter.crt -CAkey inter.key -CAcreateserial \
   -out leaf.crt -days 825 -sha256
 
-
-# 4. Création PKCS12 avec leaf + inter + root
-echo "4. Export PKCS12 leaf + inter + root"
 cat leaf.crt inter.crt root.crt > chain.pem
 
+
+# 4. PKCS12 (clé + cert + chaîne inter + root)
+echo "4. Export PKCS12 leaf + chain"
 openssl pkcs12 -export \
   -inkey leaf.key \
   -in leaf.crt \
