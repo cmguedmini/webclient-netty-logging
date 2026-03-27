@@ -8,72 +8,90 @@ Idée :
 
 En pratique tu peux faire ça avec `openssl` + `keytool` (une fois, puis versionner les fichiers dans `src/test/resources`) :
 
-### 1. Générer root, intermédiaire et leaf avec openssl
+Voici un script complet prêt à coller dans **Git Bash** (Windows) pour créer une chaîne réelle :  
+`root CA` → `intermediate CA` → `leaf cert` (CN=localhost), avec `MSYS_NO_PATHCONV=1` pour éviter les warnings et problèmes de parsing.
 
-Exemple simplifié (script shell) inspiré des guides classiques : [docs.opensearch](https://docs.opensearch.org/latest/security/configuration/generate-certificates/)
+***
+
+## Script complet (Git Bash)
+
+Tu peux tout copier dans un fichier `.sh` ou dans le terminal, dans un répertoire propre (ex. `certs/`).
 
 ```bash
-# 1. Root CA
+#!/bin/bash
+
+# Pour éviter les problèmes de parsing de /C=... sous Git Bash
+export MSYS_NO_PATHCONV=1
+
+
+# 1. ROOT CA
+echo "1. Génération root CA"
 openssl genrsa -out root.key 2048
+
 openssl req -x509 -new -nodes -key root.key \
   -sha256 -days 3650 \
-  -subj "/C=FR/ST=IDF/L=Paris/O=TestRoot/OU=Dev/CN=Test Root CA" \
+  -subj "/C=FR/ST=IDF/L=Paris/O=TestRoot/OU=Dev/CN=TestRootCA" \
   -out root.crt
 
-# 2. Intermediate CA
+
+# 2. INTERMEDIATE CA
+echo "2. Génération intermediate CA"
 openssl genrsa -out inter.key 2048
+
 openssl req -new -key inter.key \
-  -subj "/C=FR/ST=IDF/L=Paris/O=TestInter/OU=Dev/CN=Test Intermediate CA" \
+  -subj "/C=FR/ST=IDF/L=Paris/O=TestInter/OU=Dev/CN=TestIntermediateCA" \
   -out inter.csr
 
-openssl x509 -req -in inter.csr -CA root.crt -CAkey root.key -CAcreateserial \
+openssl x509 -req -in inter.csr \
+  -CA root.crt -CAkey root.key -CAcreateserial \
   -out inter.crt -days 1825 -sha256
 
-# 3. Leaf (certificat serveur)
+
+# 3. LEAF CERT (server)
+echo "3. Génération leaf cert (localhost)"
 openssl genrsa -out leaf.key 2048
+
 openssl req -new -key leaf.key \
   -subj "/C=FR/ST=IDF/L=Paris/O=TestLeaf/OU=Dev/CN=localhost" \
   -out leaf.csr
 
-openssl x509 -req -in leaf.csr -CA inter.crt -CAkey inter.key -CAcreateserial \
-  -out leaf.crt -days 825 -sha256
-```
-
-Maintenant tu as une vraie **chaîne** : `leaf.crt` → `inter.crt` → `root.crt`. [stackoverflow](https://stackoverflow.com/questions/10175812/how-can-i-generate-a-self-signed-ssl-certificate-using-openssl)
-
-### 2. Construire un PKCS12/JKS contenant la chaîne
-
-On met la clé privée du leaf + toute la chaîne dans un PKCS12, puis on importe en JKS si tu veux absolument JKS. [johnghawi](http://www.johnghawi.com/2015/12/openssl-certificates-to-java-keystore.html)
-
-```bash
-# Chaîne complète pour le leaf
+# Chaîne complète leaf → inter → root
 cat leaf.crt inter.crt root.crt > chain.pem
 
-# PKCS12 avec clé privée leaf + chaîne
+openssl x509 -req -in leaf.csr \
+  -CA inter.crt -CAkey inter.key -CAcreateserial \
+  -out leaf.crt -days 825 -sha256
+
+cat leaf.crt inter.crt root.crt > chain.pem
+
+
+# 4. Création PKCS12 (clé + cert + chaîne inter + root)
+echo "4. Export PKCS12 leaf + chain"
 openssl pkcs12 -export \
   -inkey leaf.key \
   -in leaf.crt \
   -certfile inter.crt \
-  -name "leaf-cert" \
+  -name leaf-cert \
   -out leaf-chain.p12 \
   -passout pass:password
-```
 
-Puis, si tu veux un JKS :
 
-```bash
+# 5. Conversion PKCS12 -> JKS (si tu veux JKS pour ton test)
+echo "5. Conversion PKCS12 -> JKS"
 keytool -importkeystore \
-  -srckeystore leaf-chain.p12 -srcstoretype PKCS12 -srcstorepass password \
-  -destkeystore leaf-chain.jks -deststoretype JKS -deststorepass password
+  -srckeystore leaf-chain.p12 \
+  -srcstoretype PKCS12 \
+  -srcstorepass password \
+  -destkeystore leaf-chain.jks \
+  -deststoretype JKS \
+  -deststorepass password
 ```
-
-Tu mets `leaf-chain.jks` dans `src/test/resources/ssl/`. [johnghawi](http://www.johnghawi.com/2015/12/openssl-certificates-to-java-keystore.html)
 
 ***
 
-## Utilisation dans ton test
+## Utilisation dans ton test unitaire Java
 
-Si ton `TrustedKeyStoreCertificateProvider.build(ks, null)` s’attend à un keystore qui contient la chaîne, ton test ressemble à ceci :
+Mets `leaf-chain.jks` dans `src/test/resources/ssl/leaf-chain.jks`, puis dans ton test :
 
 ```java
 KeyStore ks = KeyStoreHelper.keyStore(
@@ -83,6 +101,12 @@ KeyStore ks = KeyStoreHelper.keyStore(
     null
 );
 
+X509Certificate leafCert = (X509Certificate) ks.getCertificate("leaf-cert");
+X509Certificate[] chain = ks.getCertificateChain("leaf-cert")
+    .stream()
+    .map(c -> (X509Certificate) c)
+    .toArray(X509Certificate[]::new);
+
 TrustStrategy trustStrategy = getTrustStoreStrategy(
     FunctionalCurrentTimeSupplier.SYSTEM_TIME,
     true,
@@ -91,16 +115,10 @@ TrustStrategy trustStrategy = getTrustStoreStrategy(
     ""
 );
 
-// Récupère la chaîne complète depuis le keystore
-Certificate[] chain = ks.getCertificateChain("leaf-cert");
-X509Certificate[] x509Chain = Arrays.stream(chain)
-    .map(c -> (X509Certificate) c)
-    .toArray(X509Certificate[]::new);
-
-boolean trusted = trustStrategy.isTrusted(x509Chain, "RSA");
+boolean trusted = trustStrategy.isTrusted(chain, "RSA");
 assertThat(trusted).isTrue();
 ```
 
-Dans ce scénario, le root du keystore joue le rôle d’AC racine de confiance dans ton test (même si ce n’est pas un root « public »), et la leaf n’est pas self‑signed : elle est signée par l’intermédiaire qui lui‑même est signé par la root. [stackoverflow](https://stackoverflow.com/questions/29950950/validating-certificate-chain-in-java-from-truststore)
+Avec ce script, ton leaf cert est bien signé par l’intermédiaire, qui lui‑même est signé par le root, et ta chaîne est « non self‑signed » au niveau du leaf, tout en restant gérée par ton propre root CA. [docs.opensearch](https://docs.opensearch.org/latest/security/configuration/generate-certificates/)
 
-***
+Si tu veux, je peux aussi te proposer une version minifiée avec uniquement `C=FR,CN=localhost` si tu veux une chose ultra simple.  
