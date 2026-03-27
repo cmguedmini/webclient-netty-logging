@@ -120,5 +120,17 @@ assertThat(trusted).isTrue();
 ```
 
 Avec ce script, ton leaf cert est bien signé par l’intermédiaire, qui lui‑même est signé par le root, et ta chaîne est « non self‑signed » au niveau du leaf, tout en restant gérée par ton propre root CA. [docs.opensearch](https://docs.opensearch.org/latest/security/configuration/generate-certificates/)
+X509Certificate root = (X509Certificate) ks.getCertificate("root-cert");   // ou autre alias
+X509Certificate inter = (X509Certificate) ks.getCertificate("inter-cert"); // si alias distinct
+X509Certificate leaf = (X509Certificate) ks.getCertificate("leaf-cert");
+
+X509Certificate[] chain = {
+    root,            // certificates[0] → root
+    inter,           // certificates[1] → inter
+    leaf             // certificates[2] → leaf
+};
+
+boolean trusted = trustStrategy.isTrusted(chain, "RSA");
+assertThat(trusted).isTrue();
 
 Si tu veux, je peux aussi te proposer une version minifiée avec uniquement `C=FR,CN=localhost` si tu veux une chose ultra simple.  
