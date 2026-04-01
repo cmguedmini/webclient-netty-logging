@@ -255,3 +255,47 @@ public class MapstructTypeFilter implements TypeFilter {
 | `RandomClass` | ❌ | ❌ | ❌ | ❌ |
 
 La clé est que `AnnotationMetadata.hasAnnotation()` issu du reader ASM de Spring **lit directement le bytecode** — contrairement à `AnnotationTypeFilter` qui dans certaines versions passe par la réflexion et rate les annotations `@Retention(CLASS)`. Plus besoin de `AnnotationTypeFilter` ni de `AssignableTypeFilter`.
+
+Ajoutons un test de diagnostic pour comprendre exactement ce que lit le reader ASM sur chaque fixture. Cela nous donnera la vérité terrain avant toute autre correction.En attendant, ajoute ce test de diagnostic dans ta classe de test — il va nous dire exactement ce que lit le reader ASM sur les 3 fixtures problématiques :
+
+```java
+@Test
+@DisplayName("DIAGNOSTIC — affiche les métadonnées ASM lues sur les fixtures")
+void diagnostic() throws Exception {
+    List<Class<?>> fixtures = List.of(
+        MapperAnnotatedOnly.class,
+        ConcreteMapperAnnotated.class,
+        ChildOfAnnotatedMapper.class
+    );
+
+    for (Class<?> fixture : fixtures) {
+        MetadataReader reader = readerFactory.getMetadataReader(fixture.getName());
+
+        System.out.println("======================================");
+        System.out.println("Classe      : " + fixture.getName());
+        System.out.println("isInterface : " + reader.getClassMetadata().isInterface());
+        System.out.println("Annotations : " + reader.getAnnotationMetadata().getAnnotationTypes());
+        System.out.println("Interfaces  : " + Arrays.toString(reader.getClassMetadata().getInterfaceNames()));
+        System.out.println("hasAnnotation(@Mapper) : " +
+            reader.getAnnotationMetadata().hasAnnotation(Mapper.class.getName()));
+    }
+}
+```
+
+Lance ce test et **partage le contenu de la console**. Les deux scénarios possibles sont :
+
+**Scénario A — `getAnnotationTypes()` est vide `[]`**
+```
+Annotations : []
+hasAnnotation(@Mapper) : false
+```
+→ Le reader ASM ne voit pas `@Mapper` du tout. Cause : soit les fixtures sont lues depuis le mauvais classpath, soit le `.class` compilé ne contient pas l'annotation (problème de build).
+
+**Scénario B — `getAnnotationTypes()` contient `@Mapper`**
+```
+Annotations : [org.mapstruct.Mapper]
+hasAnnotation(@Mapper) : false
+```
+→ L'annotation est vue mais `hasAnnotation()` retourne `false` — problème de nom canonique utilisé pour la comparaison.
+
+Le résultat de ce diagnostic déterminera la correction exacte à appliquer.
