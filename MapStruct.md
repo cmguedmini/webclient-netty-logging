@@ -140,3 +140,118 @@ class ShouldMatch {
 | `RandomClass` | ❌ | ❌ | ❌ | ❌ |
 
 La racine du problème était que `AnnotationTypeFilter(checkInherited=true)` remonte via `getSuperclass()` — ce qui fonctionne pour les classes mais **retourne `null` pour les interfaces** en bytecode ASM. Le troisième filtre `byInterfaceInherited` comble ce gap en parcourant explicitement `getInterfaceNames()` de façon récursive.
+
+Merci. `false` au lieu de `true` sur ces 3 cas précis confirme que **`byAnnotation` ne fonctionne pas du tout**, et que `byInterfaceInherited` non plus. `byInterface` fonctionne (les tests qui passent l'utilisent).
+
+La cause racine : **`AnnotationTypeFilter` de Spring nécessite que l'annotation soit retenue à runtime** (`@Retention(RUNTIME)`). Or `@org.mapstruct.Mapper` a une rétention `CLASS` — elle est présente dans le bytecode mais **invisible au mécanisme de réflexion** utilisé par `AnnotationTypeFilter`.
+
+Vérifions :
+
+```java
+// Dans le source MapStruct 1.6.3 :
+@Retention(RetentionPolicy.CLASS)  // ← voilà le problème
+@Target(ElementType.TYPE)
+public @interface Mapper { ... }
+```
+
+`AnnotationTypeFilter` utilise `AnnotationMetadata` de Spring qui lit les annotations via ASM — il devrait donc fonctionner. Mais en pratique, avec `@Retention(CLASS)`, le comportement est **incohérent selon la version de Spring Core** utilisée.
+
+---
+
+### Solution — lire l'annotation directement via ASM dans le filtre
+
+Il faut abandonner `AnnotationTypeFilter` et lire les métadonnées ASM manuellement, ce qui fonctionne quelle que soit la rétention :
+
+```java
+package com.company.starter.mapstruct.filter;
+
+import com.company.starter.mapstruct.MapstructMapper;
+import org.mapstruct.Mapper;
+import org.springframework.core.type.classreading.MetadataReader;
+import org.springframework.core.type.classreading.MetadataReaderFactory;
+import org.springframework.core.type.filter.InterfaceTypeFilter;
+import org.springframework.core.type.filter.TypeFilter;
+
+import java.io.IOException;
+
+public class MapstructTypeFilter implements TypeFilter {
+
+    private static final String MAPPER_ANNOTATION_NAME = Mapper.class.getName();
+
+    // Détecte : implémente MapstructMapper
+    private final TypeFilter byInterface = new InterfaceTypeFilter(MapstructMapper.class);
+
+    @Override
+    public boolean match(MetadataReader metadataReader,
+                         MetadataReaderFactory metadataReaderFactory) throws IOException {
+        return byInterface.match(metadataReader, metadataReaderFactory)
+            || hasMapperAnnotation(metadataReader, metadataReaderFactory);
+    }
+
+    /**
+     * Détecte @Mapper via ASM pur (fonctionne avec @Retention(CLASS)).
+     * Couvre 3 cas :
+     *  1. Annotation directe sur la classe/interface
+     *  2. Classe concrète (non-interface) annotée
+     *  3. Héritage via super-interfaces (remonte récursivement)
+     */
+    private boolean hasMapperAnnotation(MetadataReader metadataReader,
+                                        MetadataReaderFactory metadataReaderFactory)
+            throws IOException {
+
+        // Cas 1 & 2 : annotation directe (fonctionne pour interface ET classe concrète)
+        if (metadataReader.getAnnotationMetadata()
+                          .hasAnnotation(MAPPER_ANNOTATION_NAME)) {
+            return true;
+        }
+
+        // Cas 3 : remonte les super-interfaces récursivement
+        return hasMappperAnnotationOnSuperInterfaces(
+                metadataReader.getClassMetadata().getInterfaceNames(),
+                metadataReaderFactory
+        );
+    }
+
+    private boolean hasMappperAnnotationOnSuperInterfaces(String[] interfaceNames,
+                                                          MetadataReaderFactory factory)
+            throws IOException {
+        for (String interfaceName : interfaceNames) {
+            try {
+                MetadataReader ifaceReader = factory.getMetadataReader(interfaceName);
+
+                if (ifaceReader.getAnnotationMetadata()
+                               .hasAnnotation(MAPPER_ANNOTATION_NAME)) {
+                    return true;
+                }
+
+                // Récursion sur les super-interfaces de l'interface courante
+                String[] superInterfaces = ifaceReader.getClassMetadata()
+                                                      .getInterfaceNames();
+                if (superInterfaces.length > 0
+                        && hasMappperAnnotationOnSuperInterfaces(superInterfaces, factory)) {
+                    return true;
+                }
+            } catch (IOException ignored) {
+                // Interface non trouvée dans le classpath (ex: java.io.Serializable) → on ignore
+            }
+        }
+        return false;
+    }
+}
+```
+
+---
+
+### Tableau final des chemins de détection
+
+| Fixture | `byInterface` | `hasMapperAnnotation` — direct | `hasMapperAnnotation` — héritage | Résultat |
+|---|---|---|---|---|
+| `ValidMapstructMapperInterface` | ✅ | ❌ | ❌ | ✅ |
+| `MapperAnnotatedOnly` | ❌ | ✅ | ❌ | ✅ |
+| `ConcreteMapperAnnotated` | ❌ | ✅ | ❌ | ✅ |
+| `MapperAnnotatedAndInterface` | ✅ | ✅ | ❌ | ✅ |
+| `ChildOfAnnotatedMapper` | ❌ | ❌ | ✅ | ✅ |
+| `RandomInterface` | ❌ | ❌ | ❌ | ❌ |
+| `RandomClass` | ❌ | ❌ | ❌ | ❌ |
+
+La clé est que `AnnotationMetadata.hasAnnotation()` issu du reader ASM de Spring **lit directement le bytecode** — contrairement à `AnnotationTypeFilter` qui dans certaines versions passe par la réflexion et rate les annotations `@Retention(CLASS)`. Plus besoin de `AnnotationTypeFilter` ni de `AssignableTypeFilter`.
