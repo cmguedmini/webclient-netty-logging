@@ -7,55 +7,254 @@ Il faut transformer build() en factory method lazy via FactoryBean<M> — Spring
 ```java
 package com.company.starter.mapstruct;
 
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.FactoryBean;
-import org.springframework.beans.factory.InjectionPoint;
-import org.springframework.beans.factory.config.DependencyDescriptor;
+import com.company.starter.mapstruct.MapstructMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.context.annotation.AnnotatedBeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.ClassMetadata;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.core.type.filter.InterfaceTypeFilter;
+import org.springframework.core.type.filter.RegexPatternTypeFilter;
+import org.springframework.core.type.filter.TypeFilter;
+import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.Set;
 
 /**
- * FactoryBean lazy — instancie le mapper MapStruct uniquement quand Spring
- * en a besoin, après initialisation complète du contexte.
+ * {@link BeanFactoryPostProcessor} responsable de l'enregistrement automatique
+ * des mappers MapStruct dans le contexte Spring.
  *
- * Supporte InjectionStrategy.CONSTRUCTOR : les dépendances du constructeur
- * généré par MapStruct sont résolues via le BeanFactory au moment de
- * la création effective du bean.
+ * <p>Deux conditions d'inclusion (OR) :
+ * <ul>
+ *   <li>Condition 1 : l'interface implémente {@link MapstructMapper}</li>
+ *   <li>Condition 2 : classe générée par MapStruct — annotée {@code @Component},
+ *       nom terminant par {@value #MAPSTRUCT_IMPL_SUFFIX}, héritant d'une interface
+ *       du même nom sans le suffixe (convention {@code componentModel = SPRING})</li>
+ * </ul>
+ *
+ * <p>Les beans sont enregistrés via {@link MapstructFactoryBean} pour garantir
+ * une instanciation lazy après initialisation complète du contexte Spring,
+ * supportant ainsi {@code InjectionStrategy.CONSTRUCTOR}.
+ *
+ * <p><b>Contrainte pour la condition 2</b> : les mappers doivent être annotés avec
+ * {@code @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)}.
+ * Le suffixe {@value #MAPSTRUCT_IMPL_SUFFIX} ne doit pas être modifié
+ * via {@code implementationSuffix}.
  */
-public class MapstructFactoryBean<M extends MapstructMapper<?, ?>>
-        implements FactoryBean<M>, BeanFactoryAware {
+public class MapstructAutoConfigure implements BeanFactoryPostProcessor {
 
-    private final Class<M> mapperClass;
-    private BeanFactory beanFactory;
+    private static final Logger log =
+            LoggerFactory.getLogger(MapstructAutoConfigure.class);
 
-    public MapstructFactoryBean(Class<M> mapperClass) {
-        this.mapperClass = mapperClass;
-    }
+    /**
+     * Suffixe conventionnel des implémentations générées par MapStruct.
+     * Correspond à la valeur par défaut de {@code @Mapper(implementationSuffix)}.
+     */
+    private static final String MAPSTRUCT_IMPL_SUFFIX = "Impl";
+
+    // -------------------------------------------------------------------------
+    // BeanFactoryPostProcessor
+    // -------------------------------------------------------------------------
 
     @Override
-    public void setBeanFactory(BeanFactory beanFactory) {
-        this.beanFactory = beanFactory;
+    public void postProcessBeanFactory(final ConfigurableListableBeanFactory beanFactory)
+            throws BeansException {
+
+        Set<BeanDefinition> mapStructMappers = findMapstructMappers();
+
+        if (mapStructMappers.isEmpty()) {
+            log.debug("No MapStruct mappers found in classpath [{}]", MAPSTRUCT_PATH);
+            return;
+        }
+
+        log.debug("Found {} MapStruct mapper(s) to register", mapStructMappers.size());
+
+        mapStructMappers.forEach(beanDefinition ->
+                registerMapper(beanFactory, beanDefinition)
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Enregistrement
+    // -------------------------------------------------------------------------
+
+    /**
+     * Enregistre un mapper comme {@link MapstructFactoryBean} dans le contexte Spring.
+     *
+     * <p>Si le bean est déjà enregistré (ex : déclaré manuellement via {@code @Bean}),
+     * l'enregistrement est ignoré pour ne pas écraser la définition existante.
+     */
+    private void registerMapper(final ConfigurableListableBeanFactory beanFactory,
+                                final BeanDefinition beanDefinition) {
+
+        final Class<?> mapperClass = TypeHelper
+                .getClassForName(beanDefinition.getBeanClassName(), MAPSTRUCT_PATH)
+                .orElseThrow(() -> new BeanCreationException(
+                        "Failed to resolve MapStruct mapper class: "
+                                + beanDefinition.getBeanClassName()));
+
+        final String beanName = resolveBeanName(mapperClass);
+
+        if (beanFactory.containsBeanDefinition(beanName)) {
+            log.debug("Mapper already registered, skipping: {}", beanName);
+            return;
+        }
+
+        ((BeanDefinitionRegistry) beanFactory)
+                .registerBeanDefinition(beanName, buildFactoryBeanDefinition(mapperClass));
+
+        log.debug("Registered MapStruct mapper [{}] as bean [{}]",
+                mapperClass.getName(), beanName);
     }
 
     /**
-     * Appelé par Spring APRÈS initialisation du contexte.
-     * À ce stade, toutes les dépendances du constructeur sont disponibles.
+     * Construit la {@link RootBeanDefinition} du {@link MapstructFactoryBean}.
+     *
+     * <p>{@link MapstructFactoryBean} garantit que l'instanciation du mapper
+     * est différée après initialisation complète du contexte Spring, permettant
+     * la résolution correcte des dépendances constructeur générées par MapStruct
+     * ({@code InjectionStrategy.CONSTRUCTOR}).
      */
-    @Override
-    public M getObject() {
-        return MapstructHelper.build(mapperClass, beanFactory);
+    private RootBeanDefinition buildFactoryBeanDefinition(final Class<?> mapperClass) {
+        RootBeanDefinition beanDefinition = new RootBeanDefinition();
+        beanDefinition.setBeanClass(MapstructFactoryBean.class);
+        beanDefinition.setTargetType(mapperClass);
+        beanDefinition.getConstructorArgumentValues()
+                      .addIndexedArgumentValue(0, mapperClass);
+        return beanDefinition;
     }
 
-    @Override
-    public Class<M> getObjectType() {
-        return mapperClass;
+    /**
+     * Résout le nom du bean à partir de la classe du mapper.
+     *
+     * <p>Suit la convention Spring : nom simple en camelCase.
+     * Ex : {@code com.company.mapper.UserMapper} → {@code userMapper}
+     */
+    private String resolveBeanName(final Class<?> mapperClass) {
+        String simpleName = mapperClass.getSimpleName();
+        return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
     }
 
-    @Override
-    public boolean isSingleton() {
-        return true; // les mappers sont sans état
+    // -------------------------------------------------------------------------
+    // Scan du classpath
+    // -------------------------------------------------------------------------
+
+    /**
+     * Scanne le classpath pour détecter les mappers MapStruct éligibles.
+     *
+     * <p>Conditions d'inclusion (OR) :
+     * <ul>
+     *   <li>Condition 1 : implémente {@link MapstructMapper} via {@link InterfaceTypeFilter}</li>
+     *   <li>Condition 2 : convention {@code *Impl} — voir {@link #buildImplConventionFilter()}</li>
+     * </ul>
+     *
+     * <p>Conditions d'exclusion (évaluées après les inclusions) :
+     * <ul>
+     *   <li>L'interface {@link MapstructMapper} elle-même</li>
+     *   <li>Les classes internes du starter ({@code XX_STARTER_MAPSTRUCT_PATH})</li>
+     * </ul>
+     */
+    private static Set<BeanDefinition> findMapstructMappers() {
+        final ClassPathScanningCandidateComponentProvider scanner =
+                new ClassPathScanningCandidateComponentProvider(false) {
+                    @Override
+                    protected boolean isCandidateComponent(
+                            final AnnotatedBeanDefinition beanDefinition) {
+                        // Nécessaire : Spring exclut nativement les interfaces
+                        // et classes abstraites. Les mappers étant des interfaces,
+                        // cette surcharge est indispensable.
+                        return true;
+                    }
+                };
+
+        // Condition 1 (OR) — interface qui extends MapstructMapper
+        // InterfaceTypeFilter Spring natif — aucune dépendance ASM requise
+        scanner.addIncludeFilter(new InterfaceTypeFilter(MapstructMapper.class));
+
+        // Condition 2 (OR) — classe générée par MapStruct via componentModel=SPRING
+        scanner.addIncludeFilter(buildImplConventionFilter());
+
+        // Exclusions — évaluées APRÈS les includeFilters (comportement Spring natif)
+        scanner.addExcludeFilter(ClassExcludeFilter.build(MapstructMapper.class));
+        scanner.addExcludeFilter(new RegexPatternTypeFilter(XX_STARTER_MAPSTRUCT_PATH));
+
+        return scanner.findCandidateComponents(MAPSTRUCT_PATH);
+    }
+
+    /**
+     * Construit le filtre de détection par convention de nommage MapStruct.
+     *
+     * <p>Un bean est accepté si les trois conditions suivantes sont toutes vraies (AND) :
+     * <ol>
+     *   <li>Son nom simple se termine par {@value #MAPSTRUCT_IMPL_SUFFIX}</li>
+     *   <li>Il est annoté {@code @Component} (généré par {@code componentModel = SPRING})</li>
+     *   <li>Il hérite d'une interface dont le nom FQN est identique au sien
+     *       sans le suffixe {@value #MAPSTRUCT_IMPL_SUFFIX}</li>
+     * </ol>
+     *
+     * <p>Exemple : {@code com.company.UserMapperImpl} est accepté si :
+     * <ul>
+     *   <li>nom termine par "Impl" ✅</li>
+     *   <li>porte @Component ✅</li>
+     *   <li>implémente {@code com.company.UserMapper} ✅</li>
+     * </ul>
+     */
+    private static TypeFilter buildImplConventionFilter() {
+        return (metadataReader, metadataReaderFactory) -> {
+            ClassMetadata meta = metadataReader.getClassMetadata();
+            String className = meta.getClassName();
+            String simpleName = className.substring(className.lastIndexOf('.') + 1);
+
+            // AND 1 — nom se termine par "Impl"
+            if (!simpleName.endsWith(MAPSTRUCT_IMPL_SUFFIX)) {
+                return false;
+            }
+
+            // AND 2 — annoté @Component
+            // @Component a @Retention(RUNTIME) → AnnotationMetadata fonctionne
+            if (!metadataReader.getAnnotationMetadata()
+                               .hasAnnotation(Component.class.getName())) {
+                return false;
+            }
+
+            // AND 3 — hérite d'une interface dont le FQN = className sans "Impl"
+            String expectedInterface = className.substring(
+                    0, className.length() - MAPSTRUCT_IMPL_SUFFIX.length()
+            );
+
+            return Arrays.asList(meta.getInterfaceNames())
+                         .contains(expectedInterface);
+        };
     }
 }
 ```
+
+---
+
+### Vue d'ensemble de la logique de scan
+```
+findMapstructMappers()
+        │
+        ├── includeFilter 1 : InterfaceTypeFilter(MapstructMapper)
+        │       → UserMapper extends MapstructMapper          ✅
+        │
+        ├── includeFilter 2 : buildImplConventionFilter()
+        │       → nom *Impl                                   AND
+        │       → @Component                                  AND
+        │       → hérite interface même nom sans Impl
+        │               → UserMapperImpl                      ✅
+        │
+        └── excludeFilter 1 : MapstructMapper.class elle-même ❌
+            excludeFilter 2 : XX_STARTER_MAPSTRUCT_PATH       ❌```
 
 ```java
 public class MapstructHelper {
@@ -147,206 +346,5 @@ public class MapstructHelper {
 }
 ```
 
-Voici l'implémentation complète et finale de `MapstructAutoConfigure` :
-
-```java
-package com.company.starter.mapstruct;
-
-import com.company.starter.mapstruct.filter.MapstructTypeFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.context.annotation.AnnotatedBeanDefinition;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.filter.RegexPatternTypeFilter;
-
-import java.util.Set;
-
-/**
- * {@link BeanFactoryPostProcessor} responsable de l'enregistrement automatique
- * des mappers MapStruct dans le contexte Spring.
- *
- * <p>Détecte les mappers via {@link MapstructTypeFilter} (interface
- * {@link MapstructMapper} OU annotation {@code @org.mapstruct.Mapper}),
- * puis les enregistre comme {@link MapstructFactoryBean} pour garantir
- * une instanciation lazy — après initialisation complète du contexte Spring.
- *
- * <p>Supporte {@code InjectionStrategy.CONSTRUCTOR} : les dépendances
- * du constructeur généré par MapStruct sont résolues via le {@code BeanFactory}
- * au moment de la création effective du bean, et non au démarrage.
- */
-public class MapstructAutoConfigure implements BeanFactoryPostProcessor {
-
-    private static final Logger log =
-            LoggerFactory.getLogger(MapstructAutoConfigure.class);
-
-    @Override
-    public void postProcessBeanFactory(final ConfigurableListableBeanFactory beanFactory)
-            throws BeansException {
-
-        Set<BeanDefinition> mapStructMappers = findMapstructMappers();
-
-        if (mapStructMappers.isEmpty()) {
-            log.debug("No MapStruct mappers found in classpath [{}]", MAPSTRUCT_PATH);
-            return;
-        }
-
-        log.debug("Found {} MapStruct mapper(s) to register", mapStructMappers.size());
-
-        mapStructMappers.forEach(beanDefinition ->
-                registerMapper(beanFactory, beanDefinition)
-        );
-    }
-
-    /**
-     * Enregistre un mapper comme {@link MapstructFactoryBean} dans le contexte Spring.
-     *
-     * <p>Si le bean est déjà enregistré (ex: déclaré manuellement via {@code @Bean}),
-     * l'enregistrement est ignoré pour ne pas écraser la définition existante.
-     *
-     * @param beanFactory    le BeanFactory Spring
-     * @param beanDefinition la définition du mapper détecté par le scanner
-     */
-    private void registerMapper(final ConfigurableListableBeanFactory beanFactory,
-                                final BeanDefinition beanDefinition) {
-
-        final Class<?> mapperClass = TypeHelper
-                .getClassForName(beanDefinition.getBeanClassName(), MAPSTRUCT_PATH)
-                .orElseThrow(() -> new BeanCreationException(
-                        "Failed to resolve MapStruct mapper class: "
-                                + beanDefinition.getBeanClassName()));
-
-        final String beanName = resolveBeanName(mapperClass);
-
-        if (beanFactory.containsBeanDefinition(beanName)) {
-            log.debug("Mapper already registered, skipping: {}", beanName);
-            return;
-        }
-
-        ((BeanDefinitionRegistry) beanFactory)
-                .registerBeanDefinition(beanName, buildFactoryBeanDefinition(mapperClass));
-
-        log.debug("Registered MapStruct mapper [{}] as [{}]",
-                mapperClass.getName(), beanName);
-    }
-
-    /**
-     * Construit la {@link RootBeanDefinition} du {@link MapstructFactoryBean}.
-     *
-     * <p>L'utilisation d'un {@link MapstructFactoryBean} garantit que
-     * {@link MapstructHelper#build(Class, org.springframework.beans.factory.BeanFactory)}
-     * est appelé uniquement après initialisation complète du contexte Spring,
-     * résolvant ainsi les dépendances du constructeur MapStruct correctement.
-     *
-     * @param mapperClass la classe de l'interface mapper
-     * @return la définition du bean prête à être enregistrée
-     */
-    private RootBeanDefinition buildFactoryBeanDefinition(final Class<?> mapperClass) {
-        RootBeanDefinition beanDefinition = new RootBeanDefinition();
-
-        // MapstructFactoryBean instancie le mapper de façon lazy,
-        // après que le contexte Spring soit complètement initialisé.
-        // Remplace l'ancienne factory method statique MapstructHelper.build()
-        // qui était appelée trop tôt (dépendances non encore disponibles).
-        beanDefinition.setBeanClass(MapstructFactoryBean.class);
-        beanDefinition.setTargetType(mapperClass);
-
-        // Passe la classe du mapper au constructeur de MapstructFactoryBean
-        beanDefinition.getConstructorArgumentValues()
-                      .addIndexedArgumentValue(0, mapperClass);
-
-        return beanDefinition;
-    }
-
-    /**
-     * Résout le nom du bean à partir de la classe du mapper.
-     *
-     * <p>Suit la convention Spring : nom simple de la classe en camelCase.
-     * Ex: {@code com.company.mapper.UserMapper} → {@code userMapper}
-     *
-     * @param mapperClass la classe du mapper
-     * @return le nom du bean à enregistrer
-     */
-    private String resolveBeanName(final Class<?> mapperClass) {
-        String simpleName = mapperClass.getSimpleName();
-        return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
-    }
-
-    /**
-     * Scanne le classpath pour détecter les mappers MapStruct éligibles.
-     *
-     * <p>Critères d'inclusion (OR) :
-     * <ul>
-     *   <li>implémente {@link MapstructMapper}</li>
-     *   <li>porte l'annotation {@code @org.mapstruct.Mapper}</li>
-     * </ul>
-     *
-     * <p>Critères d'exclusion :
-     * <ul>
-     *   <li>l'interface {@link MapstructMapper} elle-même</li>
-     *   <li>les classes internes du starter ({@code XX_STARTER_MAPSTRUCT_PATH})</li>
-     * </ul>
-     *
-     * @return l'ensemble des {@link BeanDefinition} des mappers détectés
-     */
-    private static Set<BeanDefinition> findMapstructMappers() {
-        final ClassPathScanningCandidateComponentProvider scanner =
-                new ClassPathScanningCandidateComponentProvider(false) {
-                    @Override
-                    protected boolean isCandidateComponent(
-                            final AnnotatedBeanDefinition beanDefinition) {
-                        // Spring exclut nativement les interfaces et classes abstraites.
-                        // Les mappers MapStruct étant des interfaces, cette surcharge
-                        // est indispensable pour que les deux filtres fonctionnent.
-                        return true;
-                    }
-                };
-
-        // Filtre composite OR : interface MapstructMapper OU annotation @Mapper.
-        // Utilise Spring ASM (org.springframework.asm) pour lire le bytecode
-        // directement — fonctionne avec @Retention(CLASS) de @org.mapstruct.Mapper.
-        scanner.addIncludeFilter(new MapstructTypeFilter());
-
-        // Exclusions évaluées APRÈS les includeFilters.
-        // Le starter lui-même est exclu même si ses classes portent @Mapper.
-        scanner.addExcludeFilter(ClassExcludeFilter.build(MapstructMapper.class));
-        scanner.addExcludeFilter(new RegexPatternTypeFilter(XX_STARTER_MAPSTRUCT_PATH));
-
-        return scanner.findCandidateComponents(MAPSTRUCT_PATH);
-    }
-}
-```
-
----
-
-### Vue d'ensemble des interactions entre classes
-
-```
-MapstructAutoConfigure          MapstructFactoryBean         MapstructHelper
-        │                               │                          │
-postProcessBeanFactory()                │                          │
-        │                               │                          │
-        ├── findMapstructMappers()       │                          │
-        │   └── MapstructTypeFilter     │                          │
-        │                               │                          │
-        └── registerMapper()            │                          │
-            └── buildFactoryBeanDefinition()                       │
-                └── RootBeanDefinition(MapstructFactoryBean) ──────┤
-                                        │                          │
-                    [contexte Spring complètement initialisé]      │
-                                        │                          │
-                    Premier appel au mapper (injection)            │
-                                        │                          │
-                                  getObject()                      │
-                                        └── build(class, factory) ─┤
-                                                └── resolveDependencies()
-                                                    └── constructor.newInstance(deps)
-```
 
 Les trois points clés du refactoring par rapport à l'implémentation initiale sont le remplacement de la factory method statique `MapstructHelper.build()` par `MapstructFactoryBean` pour garantir l'instanciation lazy, l'ajout du guard `containsBeanDefinition` pour éviter d'écraser les beans déclarés manuellement, et l'extraction de `buildFactoryBeanDefinition()` et `resolveBeanName()` pour isoler les responsabilités et faciliter les tests unitaires.
