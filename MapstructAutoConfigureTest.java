@@ -46,3 +46,43 @@ class MapstructAutoConfigureTest {
         }
     }
 }
+
+package lu.x.starter.mapstruct;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.SimpleBeanDefinitionRegistry;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class MapstructAutoConfigureTest {
+
+    @Test
+    void shouldRegisterBeanDefinitionsDuringPostProcessing() {
+        // 1. Initialisation de l'AutoConfigure et d'un registre de beans vide
+        MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
+        BeanDefinitionRegistry registry = new SimpleBeanDefinitionRegistry();
+
+        // 2. Exécution de la méthode à tester
+        // Note : Si MapstructAutoConfigure implémente BeanDefinitionRegistryPostProcessor,
+        // on appelle postProcessBeanDefinitionRegistry. 
+        // Si c'est postProcessBeanFactory, on passe un ConfigurableListableBeanFactory.
+        autoConfigure.postProcessBeanDefinitionRegistry(registry);
+
+        // 3. Assertions sur la couverture
+        // On vérifie qu'au moins un bean de type mapper a été identifié dans le classpath de test
+        String[] beanNames = registry.getBeanDefinitionNames();
+        
+        assertThat(beanNames)
+                .as("Le scanner doit trouver UserMapper dans le package lu.x.**.mapstruct.**")
+                .anyMatch(name -> name.contains("userMapper"));
+
+        // 4. Vérification de la configuration de la définition du bean
+        if (registry.containsBeanDefinition("userMapper")) {
+            var definition = registry.getBeanDefinition("userMapper");
+            // On vérifie que la définition pointe bien vers notre Helper ou Factory
+            assertThat(definition.getBeanClassName()).isNotNull();
+        }
+    }
+}
