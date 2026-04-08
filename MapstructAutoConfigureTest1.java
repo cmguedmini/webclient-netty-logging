@@ -114,3 +114,45 @@ import lu.x.starter.mapstruct.MapstructMapper;
 
 public interface UserMapper extends MapstructMapper<String, String> {
 }
+
+package lu.x.starter.mapstruct;
+
+import lu.x.app.mapstruct.UserMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.type.classreading.MetadataReader;
+import org.springframework.core.type.classreading.SimpleMetadataReaderFactory;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class MapstructAutoConfigureTest {
+
+    @Test
+    void shouldForceRegisterMapperForCoverage() throws Exception {
+        MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
+        DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+
+        // 1. Simulation de la découverte d'un Mapper (MetadataReader)
+        // On récupère les métadonnées de notre interface de test
+        SimpleMetadataReaderFactory factory = new SimpleMetadataReaderFactory();
+        MetadataReader reader = factory.getMetadataReader(UserMapper.class.getName());
+
+        // 2. Appel DIRECT de la logique d'enregistrement (Couvre vos méthodes privées/protégées)
+        // Si ces méthodes sont 'protected' ou 'public', appelez-les directement.
+        // Si elles sont 'private', testez via postProcessBeanFactory en vous assurant 
+        // que le BeanFactory est bien configuré.
+        autoConfigure.registerMapper(beanFactory, reader);
+
+        // 3. Assertions
+        String[] beanNames = beanFactory.getBeanNamesForType(UserMapper.class);
+        
+        assertThat(beanNames)
+            .as("La méthode registerMapper doit enregistrer le bean dans la factory")
+            .contains("userMapper");
+
+        BeanDefinition bd = beanFactory.getBeanDefinition("userMapper");
+        assertThat(bd.getBeanClassName()).isNotNull();
+    }
+}
