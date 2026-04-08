@@ -70,5 +70,24 @@ Le starter opère en trois étapes :
 2. **Résolution :** Localise la classe `Impl` correspondante via le ClassLoader de l'interface (plus robuste pour les environnements de test JUnit).
 3. **Instanciation :** Utilise la `BeanFactory` pour injecter les dépendances via le constructeur le plus complet, garantissant un code "Clean" sans accès réflexifs détournés.
 
+=== 2. Modèle de composant et Stratégie d'injection
+Le starter s'appuie sur l'injection par constructeur pour garantir l'immuabilité des mappers et une résolution propre des dépendances via la `BeanFactory`.
+
+[source,java]
+----
+@Mapper(
+    componentModel = MappingConstants.ComponentModel.SPRING,
+    injectionStrategy = InjectionStrategy.CONSTRUCTOR // <1>
+)
+public interface UserMapper extends MapstructMapper<UserEntity, UserDto> {
+    // ...
+}
+----
+<1> **Obligatoire** : Cette stratégie force MapStruct à générer un constructeur public contenant toutes les dépendances. C'est ce constructeur que le starter utilise pour instancier le bean.
+
+[WARNING]
+====
+Si vous omettez `InjectionStrategy.CONSTRUCTOR`, MapStruct peut générer un constructeur sans argument. Le starter ne pourra alors pas injecter vos dépendances (Services, autres Mappers) lors de l'instanciation manuelle.
+====
 ---
 _Dernière mise à jour : Avril 2026_
