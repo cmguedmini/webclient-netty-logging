@@ -1,9 +1,3 @@
-Pour obtenir une solution complète (Requête + Réponse) avec le corps complet (Full Body) tout en restant "safe", nous allons utiliser une approche par **décoration de flux**.
-
-En Spring Boot 2.7 (Java 11), la difficulté est que le corps de la requête est souvent écrit *après* que le filtre a passé la main au filtre suivant. Pour capturer le JSON sortant, nous devons donc intercepter l'écriture des octets.
-
-Voici le composant complet et robuste :
-
 ---
 
 ## 1. L'implémentation du Filtre Complet
@@ -132,7 +126,85 @@ logging:
 ## ⚠️ Point d'attention final
 Cette solution est parfaite pour des API REST standard. Cependant, si vous transférez des **fichiers binaires** (PDF, Images) via WebClient, le `new String(bytes)` va tenter de transformer le binaire en texte et le `log.trace` va saturer votre console/fichier de log. 
 
-Si vous avez ce cas, je vous conseille d'ajouter une vérification sur le `Content-Type` dans le filtre pour ne logguer le body que si c'est du `application/json` ou `text/plain`.
+# Proposition Copilot
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.reactive.function.client.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+
+@Slf4j
+public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
+
+    @Override
+    public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
+
+        if (!log.isTraceEnabled()) {
+            return next.exchange(request);
+        }
+
+        StringBuilder sb = new StringBuilder("\n--- WEBCLIENT TRACE ---\n");
+
+        return logAndBufferRequest(request, sb)
+                .flatMap(next::exchange)
+                .flatMap(response -> logAndBufferResponse(response, sb));
+    }
+
+    private Mono<ClientRequest> logAndBufferRequest(ClientRequest request, StringBuilder sb) {
+
+        sb.append("➡️ REQUEST: ").append(request.method()).append(" ").append(request.url()).append("\n");
+        request.headers().forEach((k, v) -> sb.append("REQ-HEADER: ").append(k).append("=").append(v).append("\n"));
+
+        return DataBufferUtils.join(request.body())
+                .flatMap(buffer -> {
+                    byte[] bytes = extractBytes(buffer);
+                    sb.append("REQ-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
+
+                    ClientRequest rebuilt = ClientRequest.from(request)
+                            .body(Mono.just(bytes), byte[].class)
+                            .build();
+
+                    return Mono.just(rebuilt);
+                });
+    }
+
+    private Mono<ClientResponse> logAndBufferResponse(ClientResponse response, StringBuilder sb) {
+
+        sb.append("⬅️ RESPONSE-STATUS: ").append(response.statusCode()).append("\n");
+        HttpHeaders headers = response.headers().asHttpHeaders();
+        headers.forEach((k, v) -> sb.append("RES-HEADER: ").append(k).append("=").append(v).append("\n"));
+
+        return DataBufferUtils.join(response.bodyToFlux(DataBuffer.class))
+                .flatMap(buffer -> {
+                    byte[] bytes = extractBytes(buffer);
+                    sb.append("RES-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
+                    sb.append("--- END TRACE ---");
+
+                    log.trace(sb.toString());
+
+                    ClientResponse rebuilt = ClientResponse.create(response.statusCode())
+                            .headers(h -> h.addAll(headers))
+                            .body(Flux.just(response.strategies().dataBufferFactory().wrap(bytes)))
+                            .build();
+
+                    return Mono.just(rebuilt);
+                });
+    }
+
+    private byte[] extractBytes(DataBuffer buffer) {
+        try {
+            byte[] bytes = new byte[buffer.readableByteCount()];
+            buffer.read(bytes);
+            return bytes;
+        } finally {
+            DataBufferUtils.release(buffer);
+        }
+    }
+}
 
 
 ------
