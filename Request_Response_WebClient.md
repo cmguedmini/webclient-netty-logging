@@ -127,6 +127,8 @@ logging:
 Cette solution est parfaite pour des API REST standard. Cependant, si vous transférez des **fichiers binaires** (PDF, Images) via WebClient, le `new String(bytes)` va tenter de transformer le binaire en texte et le `log.trace` va saturer votre console/fichier de log. 
 
 # Proposition Copilot
+package com.example.webclient;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -134,12 +136,16 @@ import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.http.client.reactive.ClientHttpRequestDecorator;
+import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.client.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
 
@@ -158,10 +164,19 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
         sb.append("➡️ REQUEST: ").append(request.method()).append(" ").append(request.url()).append("\n");
         request.headers().forEach((k, v) -> sb.append("REQ-HEADER: ").append(k).append("=").append(v).append("\n"));
 
-        // Décorateur request
-        ClientRequest decoratedRequest = ClientRequest.from(request)
+        ClientRequest decoratedRequest = decorateRequest(request, sb);
+
+        return next.exchange(decoratedRequest)
+                .flatMap(response -> logAndBufferResponse(response, sb));
+    }
+
+    private ClientRequest decorateRequest(ClientRequest request, StringBuilder sb) {
+
+        return ClientRequest.from(request)
                 .body((outputMessage, context) -> {
-                    return request.body().insert(new ClientHttpRequestDecorator(outputMessage) {
+
+                    ClientHttpRequestDecorator decorator = new ClientHttpRequestDecorator(outputMessage) {
+
                         @Override
                         public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
                             return super.writeWith(
@@ -172,12 +187,33 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
                                     })
                             );
                         }
-                    }, context);
+
+                        @Override
+                        public Mono<Void> writeWithMessageWriters(BodyInserter.Context context) {
+                            // Intercepte les BodyInserter qui n'utilisent pas writeWith()
+                            return super.writeWithMessageWriters(new BodyInserter.Context() {
+
+                                @Override
+                                public List<HttpMessageWriter<?>> messageWriters() {
+                                    return context.messageWriters();
+                                }
+
+                                @Override
+                                public Optional<Object> serverRequest() {
+                                    return context.serverRequest();
+                                }
+
+                                @Override
+                                public Map<String, Object> hints() {
+                                    return context.hints();
+                                }
+                            });
+                        }
+                    };
+
+                    return request.body().insert(decorator, context);
                 })
                 .build();
-
-        return next.exchange(decoratedRequest)
-                .flatMap(response -> logAndBufferResponse(response, sb));
     }
 
     private Mono<ClientResponse> logAndBufferResponse(ClientResponse response, StringBuilder sb) {
