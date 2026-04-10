@@ -1,8 +1,6 @@
 ---
 
 ## 1. L'implémentation du Filtre Complet
-
-```java
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -87,8 +85,7 @@ public class FullLoggingFilter implements ExchangeFilterFunction {
             }, context);
         }
     }
-}
-```
+}```
 
 ---
 
