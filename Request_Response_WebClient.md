@@ -127,7 +127,8 @@ logging:
 Cette solution est parfaite pour des API REST standard. Cependant, si vous transférez des **fichiers binaires** (PDF, Images) via WebClient, le `new String(bytes)` va tenter de transformer le binaire en texte et le `log.trace` va saturer votre console/fichier de log. 
 
 # Proposition Copilot
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
@@ -140,9 +141,9 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 
-@Slf4j
 public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
 
+    private static final Logger log = LoggerFactory.getLogger("webclient.chase");
     private static final DefaultDataBufferFactory BUFFER_FACTORY = new DefaultDataBufferFactory();
 
     @Override
@@ -154,15 +155,27 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
 
         StringBuilder sb = new StringBuilder("\n--- WEBCLIENT TRACE ---\n");
 
-        // 1. Décorer la request pour capturer le body
-        ClientRequest decoratedRequest = ClientRequest.from(request)
-                .body(new LoggingBodyInserter(request.body(), sb))
-                .build();
-
         sb.append("➡️ REQUEST: ").append(request.method()).append(" ").append(request.url()).append("\n");
         request.headers().forEach((k, v) -> sb.append("REQ-HEADER: ").append(k).append("=").append(v).append("\n"));
 
-        // 2. Intercepter la response
+        // Décorateur request
+        ClientRequest decoratedRequest = ClientRequest.from(request)
+                .body((outputMessage, context) -> {
+                    return request.body().insert(new ClientHttpRequestDecorator(outputMessage) {
+                        @Override
+                        public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
+                            return super.writeWith(
+                                    Flux.from(body).map(buffer -> {
+                                        byte[] bytes = extract(buffer);
+                                        sb.append("REQ-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
+                                        return buffer;
+                                    })
+                            );
+                        }
+                    }, context);
+                })
+                .build();
+
         return next.exchange(decoratedRequest)
                 .flatMap(response -> logAndBufferResponse(response, sb));
     }
@@ -177,7 +190,7 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
                 .defaultIfEmpty(BUFFER_FACTORY.wrap(new byte[0]))
                 .flatMap(buffer -> {
 
-                    byte[] bytes = extractBytes(buffer);
+                    byte[] bytes = extract(buffer);
                     sb.append("RES-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
                     sb.append("--- END TRACE ---");
 
@@ -192,7 +205,7 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
                 });
     }
 
-    private byte[] extractBytes(DataBuffer buffer) {
+    private byte[] extract(DataBuffer buffer) {
         try {
             byte[] bytes = new byte[buffer.readableByteCount()];
             buffer.read(bytes);
@@ -201,42 +214,9 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
             DataBufferUtils.release(buffer);
         }
     }
-
-    // Décorateur pour capturer le body de la request
-    private static class LoggingBodyInserter implements BodyInserter<Object, ClientHttpRequest> {
-
-        private final BodyInserter<?, ? super ClientHttpRequest> delegate;
-        private final StringBuilder sb;
-
-        LoggingBodyInserter(BodyInserter<?, ? super ClientHttpRequest> delegate, StringBuilder sb) {
-            this.delegate = delegate;
-            this.sb = sb;
-        }
-
-        @Override
-        public Mono<Void> insert(ClientHttpRequest outputMessage, Context context) {
-            return delegate.insert(new ClientHttpRequestDecorator(outputMessage) {
-                @Override
-                public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
-                    return super.writeWith(
-                            Flux.from(body).map(buffer -> {
-                                byte[] bytes = extract(buffer);
-                                sb.append("REQ-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
-                                return buffer;
-                            })
-                    );
-                }
-            }, context);
-        }
-
-        private byte[] extract(DataBuffer buffer) {
-            byte[] bytes = new byte[buffer.readableByteCount()];
-            buffer.read(bytes);
-            return bytes;
-        }
-    }
 }
 
+## Test
 
 package com.example.webclient;
 
