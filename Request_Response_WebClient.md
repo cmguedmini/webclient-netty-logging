@@ -2,6 +2,7 @@
 
 ## 1. L'implémentation du Filtre Complet
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Publisher;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
@@ -12,9 +13,9 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public class FullLoggingFilter implements ExchangeFilterFunction {
@@ -25,22 +26,22 @@ public class FullLoggingFilter implements ExchangeFilterFunction {
             return next.exchange(request);
         }
 
-        AtomicReference<String> reqBodyRef = new AtomicReference<>("[EMPTY]");
+        // Sink pour capturer le body de la requête de façon asynchrone mais ordonnée
+        Sinks.One<String> requestBodySink = Sinks.one();
 
-        // Décoration de la requête pour capturer le body
         ClientRequest decoratedRequest = ClientRequest.from(request)
                 .body((outputMessage, context) -> {
                     ClientHttpRequestDecorator decorator = new ClientHttpRequestDecorator(outputMessage) {
                         @Override
-                        public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
+                        public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
                             return DataBufferUtils.join(body).flatMap(buffer -> {
-                                // Lecture du body requête
                                 byte[] bytes = new byte[buffer.readableByteCount()];
                                 buffer.read(bytes);
                                 DataBufferUtils.release(buffer);
-                                reqBodyRef.set(new String(bytes, StandardCharsets.UTF_8));
                                 
-                                // On re-crée le buffer pour l'envoi réel
+                                String bodyStr = new String(bytes, StandardCharsets.UTF_8);
+                                requestBodySink.tryEmitValue(bodyStr); // On émet le body capturé
+                                
                                 return super.writeWith(Mono.just(new DefaultDataBufferFactory().wrap(bytes)));
                             });
                         }
@@ -49,25 +50,37 @@ public class FullLoggingFilter implements ExchangeFilterFunction {
                 })
                 .build();
 
+        // Gestion des requêtes sans body (GET, etc.) pour ne pas bloquer le Sink
+        if (request.body() instanceof org.springframework.web.reactive.function.BodyInserters.EmptyBodyInserter) {
+            requestBodySink.tryEmitValue("[EMPTY]");
+        }
+
         return next.exchange(decoratedRequest).flatMap(response -> 
-            response.bodyToMono(DataBuffer.class)
-                .defaultIfEmpty(new DefaultDataBufferFactory().allocateBuffer(0))
-                .map(buffer -> {
-                    // Lecture du body réponse
-                    byte[] bytes = new byte[buffer.readableByteCount()];
-                    buffer.read(bytes);
-                    DataBufferUtils.release(buffer);
-                    String resBody = new String(bytes, StandardCharsets.UTF_8);
+            // On attend que DEUX choses soient prêtes : la réponse ET le body de la requête
+            Mono.zip(requestBodySink.asMono().defaultIfEmpty("[EMPTY]"), captureResponseBody(response))
+                .map(tuple -> {
+                    String reqBody = tuple.getT1();
+                    byte[] resBytes = tuple.getT2();
+                    String resBody = new String(resBytes, StandardCharsets.UTF_8);
 
-                    // LOG FINAL
-                    logExchange(request, reqBodyRef.get(), response, resBody);
+                    logExchange(request, reqBody, response, resBody);
 
-                    // On retourne la réponse mutée avec le nouveau buffer
                     return response.mutate()
-                            .body(Flux.just(new DefaultDataBufferFactory().wrap(bytes)))
+                            .body(Flux.just(new DefaultDataBufferFactory().wrap(resBytes)))
                             .build();
                 })
         );
+    }
+
+    private Mono<byte[]> captureResponseBody(ClientResponse response) {
+        return response.bodyToMono(DataBuffer.class)
+                .map(buffer -> {
+                    byte[] bytes = new byte[buffer.readableByteCount()];
+                    buffer.read(bytes);
+                    DataBufferUtils.release(buffer);
+                    return bytes;
+                })
+                .defaultIfEmpty(new byte[0]);
     }
 
     private void logExchange(ClientRequest req, String reqBody, ClientResponse res, String resBody) {
