@@ -130,7 +130,10 @@ Cette solution est parfaite pour des API REST standard. Cependant, si vous trans
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpHeaders;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.client.reactive.ClientHttpRequest;
+import org.springframework.http.client.reactive.ClientHttpRequestDecorator;
+import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.client.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -138,7 +141,9 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 @Slf4j
-public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
+public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
+
+    private static final DefaultDataBufferFactory BUFFER_FACTORY = new DefaultDataBufferFactory();
 
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
@@ -149,37 +154,29 @@ public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
 
         StringBuilder sb = new StringBuilder("\n--- WEBCLIENT TRACE ---\n");
 
-        return logAndBufferRequest(request, sb)
-                .flatMap(next::exchange)
-                .flatMap(response -> logAndBufferResponse(response, sb));
-    }
-
-    private Mono<ClientRequest> logAndBufferRequest(ClientRequest request, StringBuilder sb) {
+        // 1. Décorer la request pour capturer le body
+        ClientRequest decoratedRequest = ClientRequest.from(request)
+                .body(new LoggingBodyInserter(request.body(), sb))
+                .build();
 
         sb.append("➡️ REQUEST: ").append(request.method()).append(" ").append(request.url()).append("\n");
         request.headers().forEach((k, v) -> sb.append("REQ-HEADER: ").append(k).append("=").append(v).append("\n"));
 
-        return DataBufferUtils.join(request.body())
-                .flatMap(buffer -> {
-                    byte[] bytes = extractBytes(buffer);
-                    sb.append("REQ-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
-
-                    ClientRequest rebuilt = ClientRequest.from(request)
-                            .body(Mono.just(bytes), byte[].class)
-                            .build();
-
-                    return Mono.just(rebuilt);
-                });
+        // 2. Intercepter la response
+        return next.exchange(decoratedRequest)
+                .flatMap(response -> logAndBufferResponse(response, sb));
     }
 
     private Mono<ClientResponse> logAndBufferResponse(ClientResponse response, StringBuilder sb) {
 
         sb.append("⬅️ RESPONSE-STATUS: ").append(response.statusCode()).append("\n");
-        HttpHeaders headers = response.headers().asHttpHeaders();
-        headers.forEach((k, v) -> sb.append("RES-HEADER: ").append(k).append("=").append(v).append("\n"));
+        response.headers().asHttpHeaders()
+                .forEach((k, v) -> sb.append("RES-HEADER: ").append(k).append("=").append(v).append("\n"));
 
         return DataBufferUtils.join(response.bodyToFlux(DataBuffer.class))
+                .defaultIfEmpty(BUFFER_FACTORY.wrap(new byte[0]))
                 .flatMap(buffer -> {
+
                     byte[] bytes = extractBytes(buffer);
                     sb.append("RES-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
                     sb.append("--- END TRACE ---");
@@ -187,8 +184,8 @@ public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
                     log.trace(sb.toString());
 
                     ClientResponse rebuilt = ClientResponse.create(response.statusCode())
-                            .headers(h -> h.addAll(headers))
-                            .body(Flux.just(response.strategies().dataBufferFactory().wrap(bytes)))
+                            .headers(h -> h.addAll(response.headers().asHttpHeaders()))
+                            .body(Flux.just(BUFFER_FACTORY.wrap(bytes)))
                             .build();
 
                     return Mono.just(rebuilt);
@@ -202,6 +199,40 @@ public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
             return bytes;
         } finally {
             DataBufferUtils.release(buffer);
+        }
+    }
+
+    // Décorateur pour capturer le body de la request
+    private static class LoggingBodyInserter implements BodyInserter<Object, ClientHttpRequest> {
+
+        private final BodyInserter<?, ? super ClientHttpRequest> delegate;
+        private final StringBuilder sb;
+
+        LoggingBodyInserter(BodyInserter<?, ? super ClientHttpRequest> delegate, StringBuilder sb) {
+            this.delegate = delegate;
+            this.sb = sb;
+        }
+
+        @Override
+        public Mono<Void> insert(ClientHttpRequest outputMessage, Context context) {
+            return delegate.insert(new ClientHttpRequestDecorator(outputMessage) {
+                @Override
+                public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
+                    return super.writeWith(
+                            Flux.from(body).map(buffer -> {
+                                byte[] bytes = extract(buffer);
+                                sb.append("REQ-BODY: ").append(new String(bytes, StandardCharsets.UTF_8)).append("\n");
+                                return buffer;
+                            })
+                    );
+                }
+            }, context);
+        }
+
+        private byte[] extract(DataBuffer buffer) {
+            byte[] bytes = new byte[buffer.readableByteCount()];
+            buffer.read(bytes);
+            return bytes;
         }
     }
 }
