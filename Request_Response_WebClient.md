@@ -133,3 +133,7 @@ logging:
 Cette solution est parfaite pour des API REST standard. Cependant, si vous transférez des **fichiers binaires** (PDF, Images) via WebClient, le `new String(bytes)` va tenter de transformer le binaire en texte et le `log.trace` va saturer votre console/fichier de log. 
 
 Si vous avez ce cas, je vous conseille d'ajouter une vérification sur le `Content-Type` dans le filtre pour ne logguer le body que si c'est du `application/json` ou `text/plain`.
+
+
+------
+# Cas Copilot
