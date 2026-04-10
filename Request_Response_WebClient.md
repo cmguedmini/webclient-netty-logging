@@ -205,7 +205,3 @@ public class ZeroCopyLoggingFilter implements ExchangeFilterFunction {
         }
     }
 }
-
-
-------
-# Cas Copilot
