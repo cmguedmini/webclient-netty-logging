@@ -236,3 +236,234 @@ public class ZeroCopyLoggingFilterCompatible implements ExchangeFilterFunction {
         }
     }
 }
+
+
+package com.example.webclient;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.web.reactive.function.client.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class ZeroCopyLoggingFilterCompatibleTest {
+
+    private ZeroCopyLoggingFilterCompatible filter;
+    private ExchangeFunction next;
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void setup() {
+        filter = new ZeroCopyLoggingFilterCompatible();
+        next = mock(ExchangeFunction.class);
+
+        Logger logger = (Logger) LoggerFactory.getLogger("webclient.chase");
+        logger.setLevel(Level.TRACE);
+
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        logger.addAppender(logAppender);
+    }
+
+    // ------------------------------------------------------------
+    // 1. Test standard request/response
+    // ------------------------------------------------------------
+    @Test
+    void testFilterLogsRequestAndResponse() {
+        ClientRequest request = ClientRequest.create()
+                .method("POST")
+                .url("http://localhost/test")
+                .bodyValue("{\"hello\":\"world\"}")
+                .build();
+
+        byte[] responseBytes = "{\"status\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
+
+        ClientResponse mockResponse = ClientResponse
+                .create(200)
+                .body(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(responseBytes)))
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectNext("{\"status\":\"ok\"}")
+                .verifyComplete();
+
+        String log = logAppender.list.get(0).getFormattedMessage();
+        assert log.contains("REQ-BODY: {\"hello\":\"world\"}");
+        assert log.contains("RES-BODY: {\"status\":\"ok\"}");
+    }
+
+    // ------------------------------------------------------------
+    // 2. Body vide
+    // ------------------------------------------------------------
+    @Test
+    void testEmptyBody() {
+        ClientRequest request = ClientRequest.create()
+                .method("GET")
+                .url("http://localhost/empty")
+                .build();
+
+        ClientResponse mockResponse = ClientResponse
+                .create(200)
+                .body(Flux.empty())
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectComplete()
+                .verify();
+
+        String log = logAppender.list.get(0).getFormattedMessage();
+        assert log.contains("REQ-BODY:");
+        assert log.contains("RES-BODY:");
+    }
+
+    // ------------------------------------------------------------
+    // 3. Multi-chunks
+    // ------------------------------------------------------------
+    @Test
+    void testMultiChunksResponse() {
+        ClientRequest request = ClientRequest.create()
+                .method("GET")
+                .url("http://localhost/chunks")
+                .build();
+
+        byte[] chunk1 = "Hello ".getBytes(StandardCharsets.UTF_8);
+        byte[] chunk2 = "World".getBytes(StandardCharsets.UTF_8);
+
+        ClientResponse mockResponse = ClientResponse
+                .create(200)
+                .body(Flux.just(
+                        DefaultDataBufferFactory.sharedInstance.wrap(chunk1),
+                        DefaultDataBufferFactory.sharedInstance.wrap(chunk2)
+                ))
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectNext("Hello World")
+                .verifyComplete();
+
+        String log = logAppender.list.get(0).getFormattedMessage();
+        assert log.contains("RES-BODY: Hello World");
+    }
+
+    // ------------------------------------------------------------
+    // 4. Erreur HTTP
+    // ------------------------------------------------------------
+    @Test
+    void testErrorResponse() {
+        ClientRequest request = ClientRequest.create()
+                .method("GET")
+                .url("http://localhost/error")
+                .build();
+
+        byte[] errorBody = "{\"error\":\"bad\"}".getBytes(StandardCharsets.UTF_8);
+
+        ClientResponse mockResponse = ClientResponse
+                .create(500)
+                .body(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(errorBody)))
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectNext("{\"error\":\"bad\"}")
+                .verifyComplete();
+
+        String log = logAppender.list.get(0).getFormattedMessage();
+        assert log.contains("RESPONSE-STATUS: 500");
+        assert log.contains("RES-BODY: {\"error\":\"bad\"}");
+    }
+
+    // ------------------------------------------------------------
+    // 5. Payload volumineux
+    // ------------------------------------------------------------
+    @Test
+    void testLargePayload() {
+        String large = "A".repeat(50_000);
+        byte[] bytes = large.getBytes(StandardCharsets.UTF_8);
+
+        ClientRequest request = ClientRequest.create()
+                .method("POST")
+                .url("http://localhost/large")
+                .bodyValue(large)
+                .build();
+
+        ClientResponse mockResponse = ClientResponse
+                .create(200)
+                .body(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(bytes)))
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectNext(large)
+                .verifyComplete();
+
+        String log = logAppender.list.get(0).getFormattedMessage();
+        assert log.contains("REQ-BODY:");
+        assert log.contains("RES-BODY:");
+    }
+
+    // ------------------------------------------------------------
+    // 6. TRACE désactivé → aucun log
+    // ------------------------------------------------------------
+    @Test
+    void testNoLogWhenNotTrace() {
+        Logger logger = (Logger) LoggerFactory.getLogger("webclient.chase");
+        logger.setLevel(Level.DEBUG); // TRACE désactivé
+
+        ClientRequest request = ClientRequest.create()
+                .method("GET")
+                .url("http://localhost/nolog")
+                .build();
+
+        ClientResponse mockResponse = ClientResponse
+                .create(200)
+                .body(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap("OK".getBytes())))
+                .build();
+
+        when(next.exchange(any())).thenReturn(Mono.just(mockResponse));
+
+        Mono<String> result = filter.filter(request, next)
+                .flatMap(resp -> resp.bodyToMono(String.class));
+
+        StepVerifier.create(result)
+                .expectNext("OK")
+                .verifyComplete();
+
+        assert logAppender.list.isEmpty();
+    }
+}
