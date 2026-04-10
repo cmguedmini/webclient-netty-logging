@@ -2,11 +2,11 @@
 
 ## 1. L'implémentation du Filtre Complet
 import lombok.extern.slf4j.Slf4j;
-import org.reactivestreams.Publisher;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import org.springframework.http.client.reactive.ClientHttpRequestDecorator;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -15,86 +15,98 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Filtre WebClient pour logguer Request/Response et leurs Body complets.
- * Nécessite le niveau de log TRACE pour s'activer.
- */
 @Slf4j
 public class FullLoggingFilter implements ExchangeFilterFunction {
 
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
-        // Condition d'activation : seulement si TRACE est activé
         if (!log.isTraceEnabled()) {
             return next.exchange(request);
         }
 
-        // Conteneur pour le body de la requête (capturé lors de l'écriture réseau)
-        AtomicReference<String> requestBodyRef = new AtomicReference<>("[EMPTY]");
+        // 1. On intercepte la requête et on force l'extraction du Body immédiatement
+        return captureRequest(request)
+            .flatMap(reqSnapshot -> {
+                // On crée une nouvelle requête avec le body déjà bufferisé ( bytes )
+                ClientRequest readyRequest = ClientRequest.from(request)
+                        .body((outputMessage, context) -> 
+                            outputMessage.writeWith(Mono.just(new DefaultDataBufferFactory().wrap(reqSnapshot.bytes))))
+                        .build();
 
-        // 1. Décoration de la requête pour intercepter le flux de sortie
-        ClientRequest decoratedRequest = ClientRequest.from(request)
-                .body((outputMessage, context) -> {
-                    ClientHttpRequestDecorator decorator = new ClientHttpRequestDecorator(outputMessage) {
-                        @Override
-                        public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
-                            return DataBufferUtils.join(body).flatMap(buffer -> {
-                                // Lecture du contenu pour le log
-                                byte[] bytes = new byte[buffer.readableByteCount()];
-                                buffer.read(bytes);
-                                
-                                // Libération immédiate du buffer original (Netty)
-                                DataBufferUtils.release(buffer);
-                                
-                                // Stockage du contenu dans la référence
-                                requestBodyRef.set(new String(bytes, StandardCharsets.UTF_8));
-                                
-                                // Re-création d'un buffer pour le flux réseau réel
-                                return super.writeWith(Mono.just(new DefaultDataBufferFactory().wrap(bytes)));
-                            });
-                        }
-                    };
-                    return request.body().insert(decorator, context);
+                // 2. On lance l'appel
+                return next.exchange(readyRequest)
+                    .flatMap(response -> captureResponse(response)
+                        .map(resSnapshot -> {
+                            // 3. LOG FINAL (Maintenant les deux sont garantis présents)
+                            logExchange(request, reqSnapshot.content, response, resSnapshot.content);
+
+                            return response.mutate()
+                                    .body(Flux.just(new DefaultDataBufferFactory().wrap(resSnapshot.bytes)))
+                                    .build();
+                        }));
+            });
+    }
+
+    private Mono<DataSnapshot> captureRequest(ClientRequest request) {
+        // Cas particulier : pas de body
+        if (request.body().getClass().getSimpleName().equalsIgnoreCase("EmptyBodyInserter")) {
+            return Mono.just(new DataSnapshot(new byte[0]));
+        }
+
+        // On crée un faux message pour forcer l'inserter à cracher ses octets
+        FakeRequest fakeRequest = new FakeRequest();
+        return request.body().insert(fakeRequest, new ClientRequest.Context() {
+            @Override public java.util.List<org.springframework.http.codec.HttpMessageWriter<?>> messageWriters() { 
+                return ClientCodecConfigurer.create().getWriters(); 
+            }
+            @Override public java.util.Optional<org.springframework.http.server.reactive.ServerHttpRequest> serverRequest() { return java.util.Optional.empty(); }
+            @Override public java.util.Map<String, Object> hints() { return java.util.Collections.emptyMap(); }
+        }).then(Mono.defer(() -> Mono.just(new DataSnapshot(fakeRequest.getBytes()))));
+    }
+
+    private Mono<DataSnapshot> captureResponse(ClientResponse response) {
+        return response.bodyToMono(DataBuffer.class)
+                .map(buffer -> {
+                    byte[] bytes = new byte[buffer.readableByteCount()];
+                    buffer.read(bytes);
+                    DataBufferUtils.release(buffer);
+                    return new DataSnapshot(bytes);
                 })
-                .build();
-
-        // 2. Exécution et capture de la réponse
-        return next.exchange(decoratedRequest)
-                .flatMap(response -> {
-                    // Agrégation du body de la réponse
-                    return response.bodyToMono(DataBuffer.class)
-                            .defaultIfEmpty(new DefaultDataBufferFactory().allocateBuffer(0))
-                            .flatMap(resBuffer -> {
-                                // Lecture des octets de la réponse
-                                byte[] resBytes = new byte[resBuffer.readableByteCount()];
-                                resBuffer.read(resBytes);
-                                DataBufferUtils.release(resBuffer);
-                                
-                                String responseBody = new String(resBytes, StandardCharsets.UTF_8);
-
-                                // LOG CONSOLIDÉ (Request + Response)
-                                logExchange(request, requestBodyRef.get(), response, responseBody);
-
-                                // Re-packaging de la réponse pour la suite de la chaîne réactive
-                                return Mono.just(response.mutate()
-                                        .body(Flux.just(new DefaultDataBufferFactory().wrap(resBytes)))
-                                        .build());
-                            });
-                });
+                .defaultIfEmpty(new DataSnapshot(new byte[0]));
     }
 
     private void logExchange(ClientRequest req, String reqBody, ClientResponse res, String resBody) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("\n--- WEBCLIENT EXCHANGE ---");
-        sb.append("\nURL         : ").append(req.method()).append(" ").append(req.url());
-        sb.append("\nREQ BODY    : ").append(reqBody);
-        sb.append("\nRES STATUS  : ").append(res.statusCode());
-        sb.append("\nRES BODY    : ").append(resBody);
-        sb.append("\n--------------------------");
-        
-        log.trace(sb.toString());
+        log.trace("\n--- WEBCLIENT EXCHANGE ---\nURL: {} {}\nREQ: {}\nRES: {} {}\n--------------------------",
+                req.method(), req.url(), reqBody.isEmpty() ? "[EMPTY]" : reqBody, res.statusCode(), resBody);
+    }
+
+    private static class DataSnapshot {
+        final byte[] bytes;
+        final String content;
+        DataSnapshot(byte[] bytes) {
+            this.bytes = bytes;
+            this.content = new String(bytes, StandardCharsets.UTF_8);
+        }
+    }
+
+    // Classe utilitaire interne pour capturer le flux
+    private static class FakeRequest implements org.springframework.http.client.reactive.ClientHttpRequest {
+        private byte[] captured;
+        @Override public org.springframework.http.HttpMethod getMethod() { return null; }
+        @Override public java.net.URI getURI() { return null; }
+        @Override public org.springframework.http.HttpHeaders getHeaders() { return new org.springframework.http.HttpHeaders(); }
+        @Override public org.springframework.core.io.buffer.DataBufferFactory bufferFactory() { return new DefaultDataBufferFactory(); }
+        @Override public Mono<Void> writeWith(org.reactivestreams.Publisher<? extends DataBuffer> body) {
+            return DataBufferUtils.join(body).doOnNext(buffer -> {
+                captured = new byte[buffer.readableByteCount()];
+                buffer.read(captured);
+                DataBufferUtils.release(buffer);
+            }).then();
+        }
+        @Override public Mono<Void> writeAndFlushWith(org.reactivestreams.Publisher<? extends org.reactivestreams.Publisher<? extends DataBuffer>> body) { return Mono.empty(); }
+        @Override public Mono<Void> setComplete() { return Mono.empty(); }
+        public byte[] getBytes() { return captured != null ? captured : new byte[0]; }
     }
 }
 ## 2. Pourquoi cette solution est la plus robuste ?
