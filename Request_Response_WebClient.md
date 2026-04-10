@@ -13,35 +13,45 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Filtre WebClient pour logguer Request/Response et leurs Body complets.
+ * Nécessite le niveau de log TRACE pour s'activer.
+ */
 @Slf4j
 public class FullLoggingFilter implements ExchangeFilterFunction {
 
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
+        // Condition d'activation : seulement si TRACE est activé
         if (!log.isTraceEnabled()) {
             return next.exchange(request);
         }
 
-        // Sink pour capturer le body de la requête de façon asynchrone mais ordonnée
-        Sinks.One<String> requestBodySink = Sinks.one();
+        // Conteneur pour le body de la requête (capturé lors de l'écriture réseau)
+        AtomicReference<String> requestBodyRef = new AtomicReference<>("[EMPTY]");
 
+        // 1. Décoration de la requête pour intercepter le flux de sortie
         ClientRequest decoratedRequest = ClientRequest.from(request)
                 .body((outputMessage, context) -> {
                     ClientHttpRequestDecorator decorator = new ClientHttpRequestDecorator(outputMessage) {
                         @Override
                         public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
                             return DataBufferUtils.join(body).flatMap(buffer -> {
+                                // Lecture du contenu pour le log
                                 byte[] bytes = new byte[buffer.readableByteCount()];
                                 buffer.read(bytes);
+                                
+                                // Libération immédiate du buffer original (Netty)
                                 DataBufferUtils.release(buffer);
                                 
-                                String bodyStr = new String(bytes, StandardCharsets.UTF_8);
-                                requestBodySink.tryEmitValue(bodyStr); // On émet le body capturé
+                                // Stockage du contenu dans la référence
+                                requestBodyRef.set(new String(bytes, StandardCharsets.UTF_8));
                                 
+                                // Re-création d'un buffer pour le flux réseau réel
                                 return super.writeWith(Mono.just(new DefaultDataBufferFactory().wrap(bytes)));
                             });
                         }
@@ -50,50 +60,43 @@ public class FullLoggingFilter implements ExchangeFilterFunction {
                 })
                 .build();
 
-        // Gestion des requêtes sans body (GET, etc.) pour ne pas bloquer le Sink
-        if (request.body() instanceof org.springframework.web.reactive.function.BodyInserters.EmptyBodyInserter) {
-            requestBodySink.tryEmitValue("[EMPTY]");
-        }
+        // 2. Exécution et capture de la réponse
+        return next.exchange(decoratedRequest)
+                .flatMap(response -> {
+                    // Agrégation du body de la réponse
+                    return response.bodyToMono(DataBuffer.class)
+                            .defaultIfEmpty(new DefaultDataBufferFactory().allocateBuffer(0))
+                            .flatMap(resBuffer -> {
+                                // Lecture des octets de la réponse
+                                byte[] resBytes = new byte[resBuffer.readableByteCount()];
+                                resBuffer.read(resBytes);
+                                DataBufferUtils.release(resBuffer);
+                                
+                                String responseBody = new String(resBytes, StandardCharsets.UTF_8);
 
-        return next.exchange(decoratedRequest).flatMap(response -> 
-            // On attend que DEUX choses soient prêtes : la réponse ET le body de la requête
-            Mono.zip(requestBodySink.asMono().defaultIfEmpty("[EMPTY]"), captureResponseBody(response))
-                .map(tuple -> {
-                    String reqBody = tuple.getT1();
-                    byte[] resBytes = tuple.getT2();
-                    String resBody = new String(resBytes, StandardCharsets.UTF_8);
+                                // LOG CONSOLIDÉ (Request + Response)
+                                logExchange(request, requestBodyRef.get(), response, responseBody);
 
-                    logExchange(request, reqBody, response, resBody);
-
-                    return response.mutate()
-                            .body(Flux.just(new DefaultDataBufferFactory().wrap(resBytes)))
-                            .build();
-                })
-        );
-    }
-
-    private Mono<byte[]> captureResponseBody(ClientResponse response) {
-        return response.bodyToMono(DataBuffer.class)
-                .map(buffer -> {
-                    byte[] bytes = new byte[buffer.readableByteCount()];
-                    buffer.read(bytes);
-                    DataBufferUtils.release(buffer);
-                    return bytes;
-                })
-                .defaultIfEmpty(new byte[0]);
+                                // Re-packaging de la réponse pour la suite de la chaîne réactive
+                                return Mono.just(response.mutate()
+                                        .body(Flux.just(new DefaultDataBufferFactory().wrap(resBytes)))
+                                        .build());
+                            });
+                });
     }
 
     private void logExchange(ClientRequest req, String reqBody, ClientResponse res, String resBody) {
-        log.trace("\n--- HTTP EXCHANGE ---\n" +
-                  "URL    : {} {}\n" +
-                  "REQ    : {}\n" +
-                  "STATUS : {}\n" +
-                  "RES    : {}\n" +
-                  "--------------------",
-                req.method(), req.url(), reqBody, res.statusCode(), resBody);
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n--- WEBCLIENT EXCHANGE ---");
+        sb.append("\nURL         : ").append(req.method()).append(" ").append(req.url());
+        sb.append("\nREQ BODY    : ").append(reqBody);
+        sb.append("\nRES STATUS  : ").append(res.statusCode());
+        sb.append("\nRES BODY    : ").append(resBody);
+        sb.append("\n--------------------------");
+        
+        log.trace(sb.toString());
     }
 }
-
 ## 2. Pourquoi cette solution est la plus robuste ?
 
 * **Gestion des Headers :** Elle liste tous les headers sortants pour un debug complet.
