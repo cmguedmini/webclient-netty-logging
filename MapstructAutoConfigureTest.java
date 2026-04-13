@@ -15,47 +15,36 @@ class MapstructAutoConfigureTest {
             // On enregistre ton auto-configuration
             .withConfiguration(AutoConfigurations.of(MapstructAutoConfigure.class));
 
-   @Test
-void shouldCoverAllPrivateMethodsStepByStep() throws Exception {
-    this.contextRunner
-        .withUserConfiguration(TestAppConfig.class)
-        .run(context -> {
-            // 1. Setup : On récupère la Factory et on instancie l'AutoConfigure
-            ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
-            MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
+  @Test
+void shouldCoverRegisterMapperAndResolveName() throws Exception {
+    this.contextRunner.run(context -> {
+        ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+        MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
 
-            // --- ÉTAPE 1 : Couvrir resolveBeanName ---
-            java.lang.reflect.Method resolveMethod = MapstructAutoConfigure.class
-                    .getDeclaredMethod("resolveBeanName", Class.class);
-            resolveMethod.setAccessible(true);
-            String beanName = (String) resolveMethod.invoke(autoConfigure, UserMapper.class);
-            
-            assertThat(beanName).isEqualTo("userMapper");
+        // 1. On prépare une BeanDefinition factice qui contient le nom de l'interface
+        // C'est crucial car registerMapper fait un getClassForName dessus !
+        GenericBeanDefinition fakeDefinition = new GenericBeanDefinition();
+        fakeDefinition.setBeanClassName(UserMapper.class.getName());
 
-            // --- ÉTAPE 2 : Couvrir buildFactoryBeanDefinition ---
-            java.lang.reflect.Method buildDefMethod = MapstructAutoConfigure.class
-                    .getDeclaredMethod("buildFactoryBeanDefinition", Class.class);
-            buildDefMethod.setAccessible(true);
-            BeanDefinition definition = (BeanDefinition) buildDefMethod.invoke(autoConfigure, UserMapper.class);
+        // 2. Accès à la méthode private registerMapper
+        Method registerMethod = MapstructAutoConfigure.class.getDeclaredMethod(
+                "registerMapper", ConfigurableListableBeanFactory.class, BeanDefinition.class);
+        registerMethod.setAccessible(true);
 
-            // On inspecte l'argument 0 pour valider la logique interne (Sonar Coverage)
-            Object arg0 = definition.getConstructorArgumentValues()
-                                    .getIndexedArgumentValue(0, Class.class)
-                                    .getValue();
-            assertThat(arg0).isEqualTo(UserMapper.class);
+        // 3. Exécution
+        registerMethod.invoke(autoConfigure, beanFactory, fakeDefinition);
 
-            // --- ÉTAPE 3 : Couvrir registerMapper (Ta signature exacte) ---
-            java.lang.reflect.Method registerMethod = MapstructAutoConfigure.class
-                    .getDeclaredMethod("registerMapper", ConfigurableListableBeanFactory.class, BeanDefinition.class);
-            registerMethod.setAccessible(true);
-            
-            // On invoque avec la définition qu'on vient de créer
-            registerMethod.invoke(autoConfigure, beanFactory, definition);
+        // 4. Assertions de Couverture
+        String expectedBeanName = "userMapper"; // Résultat de ton resolveBeanName
+        
+        assertThat(beanFactory.containsBeanDefinition(expectedBeanName))
+            .as("Le bean 'userMapper' doit être enregistré dans le registre")
+            .isTrue();
 
-            // --- VÉRIFICATION FINALE ---
-            // On vérifie que le bean est bien enregistré dans la factory
-            assertThat(beanFactory.containsBeanDefinition("userMapper")).isTrue();
-        });
+        // 5. Vérification de la 'recette' (prouve que buildFactoryBeanDefinition a été appelée)
+        BeanDefinition finalDef = beanFactory.getBeanDefinition(expectedBeanName);
+        assertThat(finalDef.getFactoryMethodName()).isEqualTo("build");
+    });
 }
     
     @Test
