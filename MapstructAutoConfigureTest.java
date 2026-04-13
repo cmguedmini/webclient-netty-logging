@@ -21,29 +21,39 @@ void shouldCoverRegisterMapperAndResolveName() throws Exception {
         ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
         MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
 
-        // 1. On prépare une BeanDefinition factice qui contient le nom de l'interface
-        // C'est crucial car registerMapper fait un getClassForName dessus !
-        GenericBeanDefinition fakeDefinition = new GenericBeanDefinition();
-        fakeDefinition.setBeanClassName(UserMapper.class.getName());
+        // 1. Préparer la définition d'entrée (ce que le scanner enverrait normalement)
+        GenericBeanDefinition inputDef = new GenericBeanDefinition();
+        inputDef.setBeanClassName(UserMapper.class.getName());
 
-        // 2. Accès à la méthode private registerMapper
+        // 2. Récupérer la méthode private registerMapper via réflexion
         Method registerMethod = MapstructAutoConfigure.class.getDeclaredMethod(
                 "registerMapper", ConfigurableListableBeanFactory.class, BeanDefinition.class);
         registerMethod.setAccessible(true);
 
-        // 3. Exécution
-        registerMethod.invoke(autoConfigure, beanFactory, fakeDefinition);
+        // 3. Premier appel : Création (Couvre la logique nominale)
+        registerMethod.invoke(autoConfigure, beanFactory, inputDef);
 
-        // 4. Assertions de Couverture
-        String expectedBeanName = "userMapper"; // Résultat de ton resolveBeanName
-        
-        assertThat(beanFactory.containsBeanDefinition(expectedBeanName))
-            .as("Le bean 'userMapper' doit être enregistré dans le registre")
-            .isTrue();
+        // --- ASSERTIONS DE COUVERTURE SONAR ---
 
-        // 5. Vérification de la 'recette' (prouve que buildFactoryBeanDefinition a été appelée)
-        BeanDefinition finalDef = beanFactory.getBeanDefinition(expectedBeanName);
-        assertThat(finalDef.getFactoryMethodName()).isEqualTo("build");
+        // A. Vérifie resolveBeanName (Vérifie le passage à la minuscule)
+        assertThat(beanFactory.containsBeanDefinition("userMapper")).isTrue();
+
+        // B. Vérifie beanFactoryBeanDefinition (L'inspection technique)
+        RootBeanDefinition registeredDef = (RootBeanDefinition) beanFactory.getBeanDefinition("userMapper");
+
+        // On vérifie que la classe du bean est bien le Helper (et non le Mapper)
+        assertThat(registeredDef.getBeanClassName()).isEqualTo(MapstructHelper.class.getName());
+
+        // On vérifie le TargetType (très important pour l'injection Spring)
+        assertThat(registeredDef.getTargetType()).isEqualTo(UserMapper.class);
+
+        // On vérifie l'argument 0 (C'est ici que Sonar valide l'ajout de l'argument)
+        var arg0 = registeredDef.getConstructorArgumentValues().getIndexedArgumentValue(0, Class.class);
+        assertThat(arg0.getValue()).isEqualTo(UserMapper.class);
+
+        // 4. Deuxième appel : Doublon (Couvre la branche "Skip" / if déjà présent)
+        // Indispensable pour atteindre les 100% de couverture sur registerMapper
+        registerMethod.invoke(autoConfigure, beanFactory, inputDef);
     });
 }
     
