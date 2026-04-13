@@ -15,36 +15,34 @@ class MapstructAutoConfigureTest {
             // On enregistre ton auto-configuration
             .withConfiguration(AutoConfigurations.of(MapstructAutoConfigure.class));
 
-    @Test
-void shouldCoverPostProcessBeanFactory() {
-    // 1. Setup : Utilisation d'un contexte réel pour avoir une BeanFactory complète
-    MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
-    DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+   @Test
+    void shouldRegisterAndConfigureMapperBean() {
+        this.contextRunner
+                .withUserConfiguration(TestAppConfig.class)
+                // On force le package de scan si le starter utilise une propriété, 
+                // sinon on s'assure que TestAppConfig est au bon endroit.
+                .run(context -> {
+                    // 1. Validation de resolveBeanName & registerMapper
+                    assertThat(context).hasBean("userMapper");
 
-    // 2. Exécution : On appelle la méthode que Sonar veut voir couverte
-    autoConfigure.postProcessBeanFactory(beanFactory);
+                    // 2. Validation de buildFactoryBeanDefinition (L'inspection technique)
+                    // C'est cette partie qui valide les lignes de code pour Sonar
+                    BeanDefinition bd = context.getBeanFactory()
+                                               .getBeanDefinition("userMapper");
+                    
+                    // Vérification que l'argument 0 est bien l'interface (couvre buildFactoryBeanDefinition)
+                    Object constructorArg = bd.getConstructorArgumentValues()
+                                              .getIndexedArgumentValue(0, Class.class)
+                                              .getValue();
+                    
+                    assertThat(constructorArg).isEqualTo(UserMapper.class);
+                    assertThat(bd.getFactoryMethodName()).isEqualTo("build");
 
-    // 3. Vérification de 'resolveBeanName' & 'registerMapper'
-    // On vérifie que le bean a été enregistré dans la factory
-    assertThat(beanFactory.containsBeanDefinition("userMapper"))
-            .as("La méthode resolveBeanName doit avoir été appelée pour créer 'userMapper'")
-            .isTrue();
-
-    // 4. Vérification de 'buildFactoryBeanDefinition'
-    BeanDefinition definition = beanFactory.getBeanDefinition("userMapper");
-    
-    // On inspecte les arguments de construction pour valider la logique de buildFactoryBeanDefinition
-    Object firstArg = definition.getConstructorArgumentValues()
-                                .getIndexedArgumentValue(0, Class.class)
-                                .getValue();
-
-    assertThat(firstArg)
-            .as("L'interface UserMapper doit être passée en argument 0")
-            .isEqualTo(UserMapper.class);
-            
-    // Si tu définis un FactoryBean ou une FactoryMethod (MapstructHelper.build)
-    assertThat(definition.getFactoryMethodName()).isEqualTo("build");
-}
+                    // 3. Validation du fonctionnement (Proxy ou Impl)
+                    UserMapper mapper = context.getBean(UserMapper.class);
+                    assertThat(mapper).isNotNull();
+                });
+    }
     
     @Test
     void shouldCreateMapperBeanWithDependencies() {
