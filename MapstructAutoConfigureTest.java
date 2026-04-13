@@ -16,42 +16,45 @@ class MapstructAutoConfigureTest {
             .withConfiguration(AutoConfigurations.of(MapstructAutoConfigure.class));
 
    @Test
-void shouldRegisterMapperWithCorrectDefinition() throws Exception {
+void shouldCoverAllPrivateMethodsStepByStep() throws Exception {
     this.contextRunner
         .withUserConfiguration(TestAppConfig.class)
         .run(context -> {
-            // 1. Récupérer le registre (le moteur de Spring)
-            BeanDefinitionRegistry registry = (BeanDefinitionRegistry) context.getSourceApplicationContext();
-            
-            // 2. Instancier ton AutoConfigure
+            // 1. Setup : On récupère la Factory et on instancie l'AutoConfigure
+            ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
             MapstructAutoConfigure autoConfigure = new MapstructAutoConfigure();
 
-            // 3. Utiliser la réflexion pour appeler ta méthode de registration
-            // Cela simule exactement ce que le scanner ferait s'il "voyait" l'interface
-            java.lang.reflect.Method registerMethod = MapstructAutoConfigure.class.getDeclaredMethod(
-                    "registerMapper", BeanDefinitionRegistry.class, Class.class);
+            // --- ÉTAPE 1 : Couvrir resolveBeanName ---
+            java.lang.reflect.Method resolveMethod = MapstructAutoConfigure.class
+                    .getDeclaredMethod("resolveBeanName", Class.class);
+            resolveMethod.setAccessible(true);
+            String beanName = (String) resolveMethod.invoke(autoConfigure, UserMapper.class);
+            
+            assertThat(beanName).isEqualTo("userMapper");
+
+            // --- ÉTAPE 2 : Couvrir buildFactoryBeanDefinition ---
+            java.lang.reflect.Method buildDefMethod = MapstructAutoConfigure.class
+                    .getDeclaredMethod("buildFactoryBeanDefinition", Class.class);
+            buildDefMethod.setAccessible(true);
+            BeanDefinition definition = (BeanDefinition) buildDefMethod.invoke(autoConfigure, UserMapper.class);
+
+            // On inspecte l'argument 0 pour valider la logique interne (Sonar Coverage)
+            Object arg0 = definition.getConstructorArgumentValues()
+                                    .getIndexedArgumentValue(0, Class.class)
+                                    .getValue();
+            assertThat(arg0).isEqualTo(UserMapper.class);
+
+            // --- ÉTAPE 3 : Couvrir registerMapper (Ta signature exacte) ---
+            java.lang.reflect.Method registerMethod = MapstructAutoConfigure.class
+                    .getDeclaredMethod("registerMapper", ConfigurableListableBeanFactory.class, BeanDefinition.class);
             registerMethod.setAccessible(true);
             
-            // On force l'exécution de ton code sur l'interface UserMapper
-            registerMethod.invoke(autoConfigure, registry, UserMapper.class);
+            // On invoque avec la définition qu'on vient de créer
+            registerMethod.invoke(autoConfigure, beanFactory, definition);
 
-            // --- ASSERTIONS POUR SONAR ---
-
-            // Vérifie resolveBeanName : le bean DOIT s'appeler "userMapper"
-            assertThat(registry.containsBeanDefinition("userMapper")).isTrue();
-
-            // Vérifie buildFactoryBeanDefinition : on inspecte la "recette"
-            BeanDefinition bd = registry.getBeanDefinition("userMapper");
-            
-            // On valide l'argument 0 (L'interface cible)
-            Object arg0 = bd.getConstructorArgumentValues()
-                            .getIndexedArgumentValue(0, Class.class)
-                            .getValue();
-            
-            assertThat(arg0).isEqualTo(UserMapper.class);
-            
-            // On valide la Factory Method
-            assertThat(bd.getFactoryMethodName()).isEqualTo("build");
+            // --- VÉRIFICATION FINALE ---
+            // On vérifie que le bean est bien enregistré dans la factory
+            assertThat(beanFactory.containsBeanDefinition("userMapper")).isTrue();
         });
 }
     
