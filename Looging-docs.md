@@ -42,3 +42,66 @@ L'implémentation repose sur un `FullLoggingFilter`. Ce filtre utilise une logiq
 ====
 L'activation du niveau `TRACE` sur un service à très fort trafic peut augmenter légèrement la consommation CPU et mémoire (JVM) car chaque payload JSON est converti en String en mémoire.
 ====
+
+Voici la section **Asciidoc** dédiée au `RestClient`. Elle suit la même structure que celle du `WebClient` pour assurer une cohérence dans ta documentation technique, tout en précisant les spécificités liées à son fonctionnement synchrone.
+
+---
+
+```asciidoc
+== Guide du Développeur : Activation des Logs HTTP (RestClient)
+
+Le `RestClient` (introduit comme l'alternative moderne et synchrone au WebClient) intègre un mécanisme de log détaillé via l'intercepteur `RestClientLoggingInterceptor`. 
+
+Tout comme pour le WebClient, ce traçage est **désactivé par défaut** et nécessite une activation manuelle du niveau `TRACE`.
+
+=== Activation via Spring Boot Admin (SBA)
+
+Pour observer les payloads JSON circulant via le `RestClient` :
+
+. Accédez à votre instance dans **Spring Boot Admin**.
+. Allez dans la section **Loggers**.
+. Recherchez la classe : `RestClientLoggingInterceptor`.
+. Basculez le niveau de `INFO` (ou `OFF`) vers **TRACE**.
+
+[TIP]
+====
+Si vous avez plusieurs clients HTTP dans la même application, vous pouvez filtrer par le nom du package commun pour activer tous les intercepteurs de logs d'un seul coup.
+====
+
+=== Détails techniques de l'implémentation
+
+Contrairement aux filtres réactifs, l'intercepteur du `RestClient` fonctionne de manière impérative :
+
+1. **Capture de la requête** : Le corps de la requête est intercepté sous forme de tableau d'octets (`byte[]`) avant l'envoi.
+2. **Buffering de la réponse** : Pour permettre la lecture du corps de la réponse à la fois par le log ET par votre code métier, nous utilisons une `BufferingClientHttpRequestFactory`.
+3. **Journalisation** : Le log n'est déclenché que si `log.isTraceEnabled()` est vrai, garantissant ainsi un impact CPU nul en conditions normales.
+
+=== Exemple de sortie (Logfile)
+
+[source,text]
+----
+--- RESTCLIENT EXCHANGE ---
+URL         : GET http://service-metier/api/v1/check
+REQ BODY    : [EMPTY]
+RES STATUS  : 200 OK
+RES BODY    : {"status": "UP", "details": "Service operational"}
+---------------------------
+----
+
+=== Précautions d'usage
+
+* **Consommation Mémoire** : L'utilisation de la `BufferingClientHttpRequestFactory` implique que la réponse est stockée intégralement en mémoire RAM avant d'être traitée. 
+* **Fichiers volumineux** : Évitez d'activer le niveau `TRACE` si vous utilisez ce client pour télécharger des fichiers volumineux (plusieurs Mo), car cela pourrait provoquer une `OutOfMemoryError`.
+
+[WARNING]
+====
+Assurez-vous que les données sensibles (mots de passe, tokens) ne sont pas logguées en clair. Si nécessaire, utilisez un masqueur de données en amont du log.
+====
+```
+
+---
+
+### Points clés ajoutés pour le RestClient :
+* **Précision sur la factory** : Il est important que le développeur sache que le "Buffering" est actif, car cela explique comment on peut lire le corps de la réponse sans fermer le stream.
+* **Avertissement sur les fichiers** : C'est une spécificité du mode synchrone bufferisé ; charger un gros fichier en `TRACE` est plus risqué qu'en streaming standard.
+* **Formatage cohérent** : Le format de sortie est quasi identique au `WebClient`, ce qui facilite la lecture croisée pour les développeurs.
