@@ -82,6 +82,21 @@ Les photos sont toujours stockées directement en base.
 *   documenter explicitement ce choix à court terme,
 *   positionner une externalisation du stockage dans une **roadmap post‑MEP**.
 
+### 7. Utilisation de Hazelcast – alignement recommandé
+Lors de la relecture, il a été constaté que les deux projets de l’application utilisent Hazelcast de manière différente :
+
+l’un via une bibliothèque interne (maison),
+l’autre via les librairies Hazelcast standards en direct.
+
+La bibliothèque maison s’appuie elle‑même sur les librairies Hazelcast standards et encapsule certaines conventions et configurations communes.
+👉 Recommandation :
+Étudier l’utilisation de la bibliothèque Hazelcast maison dans les deux projets, afin de :
+
+garantir une homogénéité de configuration et de comportement,
+simplifier la maintenance et l’exploitation,
+réduire la dette technique liée aux divergences d’implémentation.
+
+Ce point n’est pas bloquant pour la MEP mais constitue un axe de cohérence technique à moyen terme.
 ***
 
 ## 🎯 3. Synthèse et approche recommandée
