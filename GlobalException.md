@@ -878,3 +878,258 @@ Avec ce modèle tu obtiens :
 # 💡 Phrase d’architecte
 
 > **“Un bon système d’erreurs ne décrit pas seulement le problème, il permet de le diagnostiquer rapidement.”**
+---------------------
+Parfait 👍 — c’est **exactement ce qu’il faut faire** :  
+👉 inclure le frontend **dans le même ticket** → vision transverse, cohérence API, réduction des surprises en MEP.
+
+Je te fournis **une version complète et professionnelle du ticket**, enrichie avec la partie frontend, prête à coller dans Jira.
+
+***
+
+# ✅ 🎫 Ticket complet (Backend + Frontend)
+
+***
+
+## 🎯 **Titre**
+
+**Centralisation et standardisation de la gestion des erreurs Backend + adaptation Frontend**
+
+***
+
+## 📄 **Description**
+
+Dans l’état actuel de la solution, la gestion des erreurs REST présente plusieurs limites :
+
+*   présence de plusieurs `@ControllerAdvice` partiellement implémentés
+*   couverture non exhaustive des exceptions backend
+*   utilisation hétérogène des exceptions (`ResponseStatusException`, exceptions runtime, exceptions Feign…)
+*   absence de format de réponse standardisé
+*   forte variabilité des réponses côté API
+
+👉 **Impact direct :**
+
+*   gestion incohérente des erreurs
+*   difficulté de diagnostic en production (ELK)
+*   complexité côté frontend (parsing fragile)
+*   dépendance au message texte (non stable)
+*   difficulté de maintenance et d’évolution
+
+***
+
+## ✅ **Objectif**
+
+Mettre en place une **gestion centralisée, homogène et robuste des erreurs** :
+
+*   côté **Backend** :
+    *   centralisation via un seul `GlobalExceptionHandler`
+    *   définition d’un **format de réponse standard**
+    *   introduction de **codes d’erreur métier stables**
+
+*   côté **Frontend** :
+    *   adaptation pour consommer ce nouveau format
+    *   transition progressive sans rupture
+
+***
+
+# 🛠️ **Périmètre Backend**
+
+***
+
+## 🔹 1. Centralisation
+
+*   Fusion des `@ControllerAdvice` existants
+*   Mise en place d’un seul handler global
+
+***
+
+## 🔹 2. Couverture des exceptions
+
+Gestion des cas suivants :
+
+*   `BusinessException`
+*   `ConstraintViolationException`
+*   `NotFoundException`
+*   `IllegalArgumentException`
+*   `FeignException`
+*   `Exception` (fallback global obligatoire)
+
+***
+
+## 🔹 3. Format de réponse standard
+
+Exemple :
+
+```json
+{
+  "timestamp": "...",
+  "status": 400,
+  "error": "Bad Request",
+  "code": "BUS_001",
+  "message": "Le fichier est déjà traité",
+  "path": "/api/files",
+  "correlationId": "..."
+}
+```
+
+***
+
+## 🔹 4. Ajout de codes d’erreur métier
+
+*   Création d’un `ErrorCode` enum
+*   Mapping entre exceptions et codes
+*   Stabilité contractuelle des codes
+
+***
+
+## 🔹 5. Logging et observabilité
+
+*   Logs homogènes
+*   Ajout de `correlationId`
+*   Exploitation ELK facilitée
+
+***
+
+# 🎯 **Périmètre Frontend (NOUVEAU)**
+
+***
+
+## 🔹 1. Objectif côté frontend
+
+Adapter la gestion des erreurs pour :
+
+*   consommer un format standardisé
+*   réduire la dépendance aux messages texte
+*   améliorer la robustesse et la maintenabilité
+
+***
+
+## 🔹 2. Compatibilité (point critique MEP)
+
+👉 **Aucune rupture immédiate**
+
+Le backend devra fournir :
+
+*   les champs existants (`message`, `error`)
+*   *   les nouveaux champs (`code`, `correlationId`, etc.)
+
+***
+
+## 🔹 3. Adaptation progressive frontend
+
+### Étape 1 – compatibilité
+
+*   continuer à utiliser `message`
+
+***
+
+### Étape 2 – évolution
+
+*   exploiter le champ `code` pour gérer les cas métier
+
+Exemple :
+
+```js
+if (error.code === "BUS_001") {
+  // fichier déjà traité
+}
+```
+
+***
+
+### Étape 3 – amélioration UX
+
+*   gestion spécifique des erreurs :
+    *   messages utilisateurs
+    *   retry
+    *   affichage contextuel
+
+***
+
+## 🔹 4. Bonnes pratiques frontend
+
+*   ne plus parser le message texte
+*   utiliser prioritairement `code`
+*   fallback sur `message`
+
+***
+
+# ✅ **Critères d’acceptation**
+
+***
+
+## Backend
+
+✅ Un seul `@ControllerAdvice`  
+✅ Toutes les exceptions interceptées  
+✅ Format JSON standard uniforme  
+✅ Présence d’un fallback global  
+✅ Codes d’erreur définis et documentés
+
+***
+
+## Frontend
+
+✅ Aucun impact régressif  
+✅ Les erreurs sont correctement affichées  
+✅ Le champ `code` est exploitable  
+✅ Compatibilité avec les réponses existantes
+
+***
+
+# ⚠️ **Contraintes / points d’attention**
+
+*   ⚠️ Ne pas casser les contrats API existants
+*   ⚠️ Nécessite validation avec équipe frontend
+*   ⚠️ Coordination Backend ↔ Frontend obligatoire
+*   ⚠️ À éviter en mode “big bang”
+*   ⚠️ Prioriser une approche progressive
+
+***
+
+# ✅ **Priorité**
+
+🟡 Moyenne
+
+👉 Non bloquant MEP  
+👉 Fortement recommandé pour robustesse production
+
+***
+
+# 🎯 **Bénéfices attendus**
+
+*   Cohérence API globale
+*   Amélioration de la qualité du code
+*   Meilleure exploitation (logs/ELK)
+*   Debug plus rapide
+*   Réduction des bugs frontend
+*   Meilleure communication backend/frontend
+
+***
+
+# 💡 **Position à tenir en réunion**
+
+Tu peux dire :
+
+> **“Ce chantier n’est pas une refonte, mais une standardisation progressive permettant de sécuriser le comportement des erreurs sans impacter le frontend de manière brutale.”**
+
+***
+
+# ✅ Conclusion
+
+✔ Ticket transverse (Backend + Frontend)  
+✔ Pas de rupture  
+✔ Forte valeur long terme  
+✔ Aligne toute l’architecture
+
+***
+
+## 🔜 Si tu veux aller encore plus loin
+
+Je peux maintenant te proposer :
+
+✅ une **checklist de migration backend → frontend**  
+✅ un **contrat OpenAPI avec ErrorResponse standard**  
+✅ un **exemple Angular/React complet de gestion d’erreur**  
+✅ une **stratégie de déploiement progressive (release plan)**
+
+Dis‑moi 👍
