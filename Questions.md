@@ -1,27 +1,3 @@
-Excellente initiative 👍 — c’est **très smart d’utiliser ce meeting pour cadrer les SLA**.  
-👉 C’est même **un des objectifs clés côté client**, souvent implicite.
-
-Je vais te proposer des **questions structurées, impactantes, et orientées décision**, que tu peux poser **naturellement pendant la réunion**.
-
-***
-
-# 🎯 ✅ 1. OBJECTIF DES QUESTIONS SLA
-
-👉 Tes questions doivent permettre de clarifier :
-
-✅ attentes métier  
-✅ tolérance au délai  
-✅ niveau de performance attendu  
-✅ criticité des données
-
-***
-
-👉 en une phrase :
-
-> **Tu veux comprendre ce qui est “acceptable” pour le client**
-
-***
-
 # 🧠 ✅ 2. QUESTIONS SLA — PAR THÈME
 
 ***
@@ -271,14 +247,254 @@ Je vais te proposer des **questions structurées, impactantes, et orientées dé
 
 ***
 
-# 🚀 Si tu veux aller encore plus loin
+Excellente question 👍 — et là tu passes clairement en mode **consultant / architecte confirmé**.
 
-Je peux te faire :
+👉 Oui, poser des questions à l’Infra est **TRÈS important**, et même critique pour :
 
-✅ un slide CGI “SLA Questions” à afficher en réunion  
-✅ une matrice SLA → stratégie technique  
-✅ un script pour exploiter les réponses client en LIVE
+✅ sécuriser ton approche  
+✅ éviter les surprises  
+✅ les embarquer dans la décision
 
 ***
 
-👉 Dis-moi 👍
+# 🎯 ✅ 1. Objectif de tes questions côté Infra
+
+👉 Tu ne poses pas des questions “techniques pures”  
+👉 Tu poses des questions pour :
+
+✔ **valider la faisabilité**  
+✔ **identifier les risques**  
+✔ **impliquer l’Infra dans la solution**
+
+***
+
+👉 👉 en une phrase :
+
+> **“Tu veux qu’ils s’approprient la solution”**
+
+***
+
+# 🧠 ✅ 2. LES QUESTIONS CLÉS (STRUCTURÉES PAR SUJET)
+
+***
+
+# 🔵 A. RESTORE DB (🔥 le point le plus critique)
+
+***
+
+### ✅ Questions
+
+> **“Avez-vous déjà réalisé des opérations de restore sur des volumes de cet ordre de grandeur ?”**
+
+***
+
+> **“Avez-vous une estimation du temps de restauration pour ce volume ?”**
+
+***
+
+> **“Est-ce qu’un restore dans un schéma isolé vous semble faisable sans impact sur l’existant ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ valider la faisabilité  
+✔ les faire se positionner
+
+***
+
+***
+
+# 🔵 B. CAPACITÉ INFRA (DB / ES / MQ)
+
+***
+
+### ✅ Questions
+
+> **“En termes de capacité, la plateforme est-elle dimensionnée pour supporter un restore + une réindexation Elastic en parallèle ?”**
+
+***
+
+> **“Voyez-vous des points de saturation potentiels côté DB ou Elastic ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ anticiper les limites  
+✔ crédibiliser ton approche
+
+***
+
+***
+
+# 🔵 C. PERFORMANCE & CHARGE
+
+***
+
+### ✅ Questions
+
+> **“Y a-t-il des contraintes particulières sur les fenêtres de forte charge à éviter ?”**
+
+***
+
+> **“Préférez-vous que certaines opérations soient réalisées en heures creuses ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ adapter ton planning  
+✔ montrer que tu anticipes
+
+***
+
+***
+
+# 🔵 D. GESTION DU GAP (🔥 important)
+
+***
+
+### ✅ Questions
+
+> **“Sur le mécanisme de GAP, voyez-vous des contraintes côté MQ ou gestion des files ?”**
+
+***
+
+> **“La mise en place d’une queue buffer dédiée vous semble-t-elle adaptée ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ les impliquer dans la solution  
+✔ éviter rejet tardif
+
+***
+
+***
+
+# 🔵 E. DELTA POST-SNAPSHOT (point expert 🔥)
+
+***
+
+### ✅ Questions
+
+> **“Concernant le delta entre le snapshot et la mise en production, avez-vous une préférence entre une fenêtre de gel ou un rejeu incrémental ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ sécuriser le point le plus critique  
+✔ ouvrir le débat intelligemment
+
+***
+
+***
+
+# 🔵 F. SUPERVISION & MONITORING
+
+***
+
+### ✅ Questions
+
+> **“Quels outils de monitoring recommandez-vous pour suivre le rejeu et la montée en charge ?”**
+
+***
+
+> **“Avez-vous des seuils d’alerte à respecter ?”**
+
+***
+
+👉 🎯 objectif :
+
+✔ montrer maturité  
+✔ préparer le pilotage
+
+***
+
+***
+
+# 🔵 G. ROLLBACK / SÉCURITÉ
+
+***
+
+### ✅ Questions
+
+> **“Voyez-vous des contraintes particulières pour garantir un rollback rapide en cas d’incident ?”**
+
+***
+
+# 🎤 ✅ 3. COMMENT POSER LES QUESTIONS (très important)
+
+👉 ne fais pas un “interrogatoire technique”
+
+***
+
+## ✅ phrase d’intro parfaite
+
+> **“Pour sécuriser l’approche, j’aimerais avoir votre retour côté Infrastructure sur quelques points clés.”**
+
+***
+
+👉 puis tu enchaînes 2–3 questions max
+
+***
+
+## ✅ pendant la discussion
+
+👉 tu peux dire :
+
+> **“Est-ce que cela vous semble cohérent côté infra ?”**
+
+
+***
+
+# 🔥 ✅ 4. LES 5 QUESTIONS À POSER ABSOLUMENT
+
+👉 si tu dois aller à l’essentiel :
+
+***
+
+### ✅ 1
+
+> “Le restore sur ce volume vous semble-t-il faisable ?”
+
+***
+
+### ✅ 2
+
+> “Voyez-vous un risque côté capacité DB / Elastic ?”
+
+***
+
+### ✅ 3
+
+> “Comment gérez-vous habituellement ce type de charge en PROD ?”
+
+***
+
+### ✅ 4
+
+> “Sur le GAP, cette approche vous semble-t-elle adaptée ?”
+
+***
+
+### ✅ 5
+
+> “Comment souhaitez-vous gérer le delta final avant la bascule ?”
+
+👉 propose une orientation :
+
+***
+
+> **“Nous envisageons soit un gel court, soit un rejeu incrémental — avez-vous une préférence côté infra ?”**
+
+***
+
+# 💡 🔥 PHRASE CLÉ À UTILISER
+
+> **“L’objectif est de valider ensemble la faisabilité et d’identifier les points de vigilance côté Infrastructure.”**
+
+***
