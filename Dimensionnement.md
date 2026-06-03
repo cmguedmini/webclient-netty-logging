@@ -321,19 +321,80 @@ Elastic ≈ 2.6 To
 
 ***
 
+Parfait 👍 — tu es dans un **enchaînement très pro** :  
+CR → suivi → livrables demandés ✅
+
+👉 Je te prépare un **email prêt à envoyer**, bien positionné :
+
+* rappel du contexte
+* livraison des éléments
+* posture maîtrisée (ni trop longue, ni trop vague)
+
 ***
 
-# 🚀 Si tu veux aller encore plus loin
-
-Je peux te faire :
-
-✅ un Excel avec ces valeurs + scénarios (5j, 10j, 15j de rejeu)  
-✅ un slide “dimensionnement visuel” prêt pour comité  
-✅ calcul automatique GAP / Elastic selon évolution des volumes
+# 📧 ✅ EMAIL DE REBOND (PRÊT À ENVOYER)
 
 ***
 
-👉 Dis-moi 👍
+## 📧 Objet
+
+Suite réunion – Dimensionnement & stratégie delta post-snapshot
+
+***
+
+## 📧 Contenu
+
+Bonjour à tous,
+
+Suite à nos échanges lors de la réunion et comme convenu avec l’équipe Infrastructure, vous trouverez en pièces jointes les éléments complémentaires relatifs :
+
+* au **dimensionnement global** (DB, Elastic, MQ, logs)
+* ainsi qu’à la **stratégie de gestion du delta post-snapshot**, incluant le mécanisme de bufferisation et de rejeu
+
+***
+
+### ✅ Dimensionnement
+
+Le dimensionnement proposé est basé sur une extrapolation réalisée à partir d’un échantillon de données de deux semaines.
+
+Il intègre :
+
+* la volumétrie cible sur 5 ans
+* le dimensionnement Elastic (avec réplication)
+* l’estimation du buffer GAP (MQ)
+* le volume de logs en tenant compte de la stratégie de rétention actuelle (7 jours)
+
+***
+
+### ✅ Stratégie delta post-snapshot
+
+La stratégie retenue repose sur :
+
+* la **capture continue du flux temps réel via MQ en production**
+* le maintien d’un buffer actif pendant la phase de restore
+* le **rejeu incrémental du delta** après restauration
+* une bascule conditionnée à la synchronisation complète
+
+Cette approche permet de garantir la cohérence des données et l’absence de perte.
+
+***
+
+### ⚠️ Ajustements à venir
+
+Ces estimations seront à confirmer lors de la phase de simulation complète en environnement Formation.
+
+Cette phase permettra :
+
+* de valider les hypothèses de volumétrie
+* d’observer les comportements réels (DB, Elastic, MQ)
+* d’ajuster le dimensionnement si nécessaire
+
+***
+
+N’hésitez pas à me faire part de vos retours ou questions.
+
+Bien cordialement,  
+**\[Signature]**
 
 
 👉 Dis-moi 👍
