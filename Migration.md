@@ -601,6 +601,326 @@ Cette stratégie repose sur une approche progressive et sécurisée combinant re
 
 > **Le legacy assure la continuité, le rejeu construit la cible, et le delta garantit la vérité avant la bascule.**
 
+-------
+Parfait 👍 — voici le **document final consolidé, propre, cohérent et prêt à livraison**, avec :
+
+✅ section ajustée intégrée  
+✅ architecture complète  
+✅ diagrammes à jour (cohérence legacy + delta)  
+✅ logique des phases corrigée  
+✅ alignement infra / prod
+
+***
+
+# 📘 **Stratégie globale de migration**
+
+## Rejeu – Snapshot – Restore – Delta avec coexistence Legacy
+
+***
+
+# 🎯 1. Objectif
+
+Cette stratégie vise à sécuriser la migration vers la nouvelle application en minimisant les risques opérationnels tout en garantissant une continuité totale de service. Elle repose sur une reconstruction préalable des données en PREPROD, suivie d’un transfert vers PROD.  
+L’approche permet de limiter la charge en production, d’anticiper les problèmes de performance et de valider le dispositif via des dry‑runs.  
+Un mécanisme de rejeu du delta permet d’assurer une synchronisation complète avec la réalité métier avant la bascule finale.
+
+***
+
+# 🧠 2. Principe global
+
+La stratégie s’appuie sur une séparation claire entre la reconstruction PREPROD et la mise en production.  
+Les données sont générées hors PROD, puis transférées via backup/restore (DB) et snapshot/restore (Elastic).  
+Pendant ces opérations, le système legacy reste actif et continue de consommer les flux.  
+Le delta est capturé, puis rejoué pour aligner le nouveau système avec la réalité métier, avant la bascule finale (cutover).
+
+***
+
+# 🏗️ 3. Architecture globale
+
+L’architecture distingue :
+
+* PREPROD → reconstruction des données
+* PROD → exploitation
+* Legacy → actif jusqu’au cutover
+* GAP → buffer de synchronisation
+
+***
+
+```plantuml
+@startuml
+title Architecture globale avec coexistence Legacy
+
+node "PREPROD" {
+    [Replay Service]
+    [DB PREPROD]
+    [Elastic PREPROD]
+}
+
+node "PROD" {
+    component "Legacy App" as LEGACY
+    component "New App" as NEW
+    [DB PROD]
+    [Elastic PROD]
+}
+
+queue "Replay Queue" as RQ
+queue "MQ PROD" as MQ
+queue "Buffer GAP" as GAP
+
+RQ -> [Replay Service]
+[Replay Service] -> [DB PREPROD]
+[Replay Service] -> [Elastic PREPROD]
+
+[DB PREPROD] --> [DB PROD]
+[Elastic PREPROD] --> [Elastic PROD]
+
+MQ -> LEGACY : Consommation temps réel
+MQ -> GAP : Duplication
+
+GAP -> [Replay Service]
+[Replay Service] -> NEW
+NEW -> [DB PROD]
+NEW -> [Elastic PROD]
+
+@enduml
+```
+
+***
+
+# 🔄 4. Fonctionnement détaillé (phases corrigées)
+
+***
+
+## 🟦 Phase 1 – Rejeu PREPROD
+
+* Rejeu complet via replay queue
+* Reconstruction DB PREPROD (ordre respecté ✅)
+* Réindexation Elastic
+* Début capture du delta via GAP
+
+👉 Legacy actif en PROD ✅
+
+***
+
+## 🟦 Phase 2 – Snapshot & Restore
+
+* Backup DB PREPROD
+* Restore DB PROD (nouveau schéma)
+* Snapshot Elastic PREPROD
+* Restore Elastic PROD
+
+👉 Création du **point T0**
+
+***
+
+## 🟦 Phase 3 – Fonctionnement parallèle
+
+* Legacy consomme flux temps réel
+* Flux dupliqué vers GAP
+
+👉 Capture du delta ✅
+
+***
+
+## 🟦 Phase 4 – Rejeu du delta
+
+* Consommation du buffer GAP
+* Mise à jour DB PROD + Elastic
+
+👉 Synchronisation complète ✅
+
+***
+
+## 🟦 Phase 5 – Cutover
+
+* Validation finale
+* Bascule flux vers NEW
+* Arrêt progressif legacy
+
+👉 Nouveau système devient actif ✅
+
+***
+
+## 🟦 Phase 6 – Nettoyage
+
+* Suppression replay queues
+* Suppression buffer GAP
+
+***
+
+## 🟦 Phase 7 – Stabilisation
+
+* Monitoring
+* Validation métier
+* Décommissionnement legacy
+
+***
+
+# 🔄 5. Diagramme de séquence (complet & corrigé)
+
+```plantuml
+@startuml
+title Rejeu PREPROD → Migration → Delta → Cutover
+
+participant "Replay Queue" as RQ
+participant "Replay Service" as RS
+participant "DB PREPROD" as DBPP
+participant "Elastic PREPROD" as ESPP
+
+participant "DB PROD" as DBP
+participant "Elastic PROD" as ESP
+
+participant "MQ PROD" as MQ
+participant "Legacy App" as LEG
+participant "Buffer GAP" as GAP
+participant "New App" as NEW
+
+== Phase 1 ==
+RQ -> RS
+RS -> DBPP
+RS -> ESPP
+
+MQ -> LEG
+MQ -> GAP
+
+== Phase 2 ==
+DBPP -> DBP
+ESPP -> ESP
+
+== Phase 3 ==
+MQ -> LEG
+MQ -> GAP
+
+== Phase 4 ==
+GAP -> RS
+RS -> DBP
+RS -> ESP
+
+== Phase 5 ==
+NEW -> DBP
+NEW -> ESP
+
+== Phase 6 ==
+MQ -> NEW
+LEG -> LEG : arrêt progressif
+
+== Phase 7 ==
+NEW -> NEW : fonctionnement nominal
+
+@enduml
+```
+
+***
+
+# 🧪 6. Dry‑run
+
+Des tests dry‑run sont réalisés en amont pour :
+
+* rejouer **1 an de données**
+* stabiliser le processus
+* ajuster performance et capacité
+
+👉 Objectif : validation en conditions réelles ✅
+
+***
+
+# ⚙️ 7. Validation Infra
+
+* Simulation snapshot / restore obligatoire
+* Validation :
+  * performance
+  * fiabilité
+  * cohérence
+
+***
+
+## 🔴 Fallback
+
+Si la simulation échoue :
+
+```
+→ Réindexation directe en PROD
+```
+
+***
+
+# 🔀 8. Cutover
+
+```plantuml
+@startuml
+title Cutover Legacy → New
+
+participant MQ
+participant LEGACY
+participant NEW
+
+MQ -> LEGACY : avant
+MQ -> NEW : delta uniquement
+
+NEW -> NEW : synchro OK
+
+MQ -> NEW : bascule ✅
+LEGACY -> LEGACY : arrêt
+
+@enduml
+```
+
+***
+
+# 🔁 9. Rollback
+
+En cas de problème :
+
+* arrêt NEW
+* redirection flux vers LEGACY
+* reprise immédiate
+
+👉 rollback rapide et sécurisé ✅
+
+***
+
+# ⏱️ 10. Timeline MEP
+
+* H‑48 → validation
+* H‑12 → gel
+* H0 → restore
+* H+1 → validation
+* H+3 → delta
+* H+6 → validation
+* H+7 → cutover
+* H+24 → stabilisation
+
+***
+
+# ✅ 11. Bénéfices
+
+* ✅ zéro interruption métier
+* ✅ migration progressive
+* ✅ performance maîtrisée
+* ✅ rollback sécurisé
+* ✅ validation préalable
+
+***
+
+# ⚠️ 12. Points de vigilance
+
+* gestion du delta
+* monitoring
+* cohérence des données
+* performance MQ / Elastic
+
+***
+
+# 🎯 13. Conclusion
+
+La stratégie repose sur une migration progressive, sécurisée et industrialisée, combinant rejeu, snapshot, delta et coexistence avec le legacy.  
+Elle garantit une transition fluide avec un niveau de risque maîtrisé.
+
+***
+
+# 🔥 Phrase finale
+
+> **Le legacy assure la continuité, le rejeu construit la cible, et le delta garantit la vérité avant la bascule.**
 
 
 
