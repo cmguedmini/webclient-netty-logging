@@ -384,6 +384,222 @@ Les dry‑runs s’inscrivent en amont de la mise en production et viennent comp
 👉 👉 Ils constituent une étape clé de **sécurisation globale du dispositif**.
 
 ***
+Parfait 👍 — voici le **document final consolidé**, complet, structuré et prêt à être livré tel quel (doc technique / archi / infra).  
+Il inclut : stratégie, architecture, diagrammes (PlantUML), cutover, rollback, dry‑run, timeline, et descriptions.
+
+***
+
+# 📘 Stratégie globale de migration
+
+## Rejeu – Snapshot – Restore – Delta avec coexistence Legacy
+
+***
+
+# 🎯 1. Objectif
+
+Cette stratégie vise à sécuriser la migration vers la nouvelle application en minimisant les risques opérationnels tout en garantissant la continuité de service. Elle repose sur une reconstruction préalable des données en environnement contrôlé (PREPROD) puis leur transfert vers la production. L’approche permet de réduire la charge en production, d’anticiper les problématiques de performance et de valider le processus via des dry‑runs. Elle intègre également un mécanisme de rejeu du delta afin d’assurer une synchronisation complète avec la réalité métier.
+
+***
+
+# 🧠 2. Principe global
+
+La stratégie s’appuie sur une séparation claire entre la phase de préparation et celle de mise en production. Le rejeu est réalisé en PREPROD sur des volumes représentatifs, suivi d’un transfert contrôlé vers PROD via backup/restore (DB) et snapshot/restore (Elastic). Pendant ce temps, le legacy reste actif et consomme les flux temps réel. Le delta est ensuite rejoué afin de synchroniser les données avant la bascule finale. Cette approche permet de déplacer les traitements lourds hors PROD tout en assurant la cohérence finale.
+
+***
+
+# 🏗️ 3. Architecture globale
+
+L’architecture distingue PREPROD (reconstruction) et PROD (exploitation), avec coexistence temporaire entre legacy et nouvelle application. Les flux temps réel sont dupliqués pour alimenter un buffer GAP, permettant de rejouer le delta après migration. Le legacy reste le système de référence jusqu’au cutover. Cette architecture garantit une migration progressive, sans interruption du service métier.
+
+```plantuml
+@startuml
+title Architecture globale avec coexistence Legacy
+
+node "PREPROD" {
+    [Replay Service]
+    [DB PREPROD]
+    [Elastic PREPROD]
+}
+
+node "PROD" {
+    component "Legacy App" as LEGACY
+    component "New App" as NEW
+    [DB PROD]
+    [Elastic PROD]
+}
+
+queue "Replay Queue" as RQ
+queue "MQ PROD" as MQ
+queue "Buffer GAP" as GAP
+
+RQ -> [Replay Service]
+[Replay Service] -> [DB PREPROD]
+[Replay Service] -> [Elastic PREPROD]
+
+[DB PREPROD] --> [DB PROD]
+[Elastic PREPROD] --> [Elastic PROD]
+
+MQ -> LEGACY
+MQ -> GAP
+GAP -> [Replay Service]
+[Replay Service] -> NEW
+NEW -> [DB PROD]
+NEW -> [Elastic PROD]
+
+@enduml
+```
+
+***
+
+# 🔄 4. Fonctionnement détaillé
+
+Le rejet historique est exécuté en PREPROD via une replay queue, garantissant l’ordre des événements et la reconstruction fidèle des données. Une fois la base stabilisée, elle est transférée en PROD via backup/restore. Les index Elasticsearch sont reconstruits puis restaurés via snapshot. Pendant ce processus, le legacy continue de consommer les flux temps réel. Ceux-ci sont dupliqués vers un buffer GAP afin d’être rejoués dans la nouvelle application. Le système est ainsi progressivement aligné avec la réalité métier avant bascule.
+
+***
+
+# 🧪 5. Dry‑run et validation
+
+Des dry‑runs sont réalisés en amont pour valider la stratégie en conditions réelles. Chaque exécution rejoue un volume équivalent à une année d’exploitation. Ces tests permettent de stabiliser le processus, ajuster les paramètres techniques (batch, threads, JVM, MQ), identifier les points de saturation et mesurer les performances. Ils constituent une étape clé pour transformer la stratégie en un processus opérationnel maîtrisé.
+
+***
+
+# ⚙️ 6. Validation Infra – Snapshot
+
+Le mécanisme snapshot/restore Elasticsearch fait l’objet d’une validation spécifique par l’équipe Infra. Une simulation complète est réalisée pour vérifier la faisabilité, le temps d’exécution et la fiabilité du processus. Cette étape est critique pour sécuriser la migration. En cas d’échec, une stratégie alternative est prévue basée sur une réindexation en production.
+
+***
+
+# 🔄 7. Diagramme de séquence complet
+
+```plantuml
+@startuml
+title Flux complet avec Legacy actif
+
+participant "Replay Queue" as RQ
+participant "Replay Service" as RS
+participant "DB PREPROD" as DBPP
+participant "Elastic PREPROD" as ESF
+participant "Legacy" as LEG
+participant "MQ PROD" as MQ
+participant "GAP" as GAP
+participant "DB PROD" as DBP
+participant "Elastic PROD" as ESP
+
+RQ -> RS
+RS -> DBPP
+RS -> ESF
+
+DBPP -> DBP
+ESF -> ESP
+
+MQ -> LEG
+
+MQ -> GAP
+GAP -> RS
+RS -> DBP
+RS -> ESP
+
+@enduml
+```
+
+Ce diagramme illustre l’ensemble du flux depuis le rejeu PREPROD jusqu’à la synchronisation finale en PROD. Il met en évidence la coexistence legacy et la gestion du delta via GAP.
+
+***
+
+# 🔀 8. Cutover (bascule finale)
+
+```plantuml
+@startuml
+title Cutover Legacy → New
+
+participant MQ
+participant LEGACY
+participant NEW
+
+MQ -> LEGACY : avant (flux principal)
+MQ -> NEW : delta uniquement
+
+NEW -> NEW : synchro OK
+
+MQ -> NEW : bascule ✅
+LEGACY -> LEGACY : arrêt progressif
+
+@enduml
+```
+
+Le cutover consiste à basculer le flux principal vers la nouvelle application une fois que les données sont entièrement synchronisées. Le legacy est ensuite désactivé progressivement. Cette transition se fait sans interruption métier et après validation complète.
+
+***
+
+# 🔁 9. Scénario de rollback
+
+En cas de problème (performance, incohérence, erreurs), un rollback est immédiatement possible. Le flux est redirigé vers le legacy, qui reste opérationnel durant toute la migration. La nouvelle application est arrêtée, les anomalies sont analysées, puis un nouveau dry‑run peut être lancé. Cette stratégie garantit une réversibilité complète et limite les risques métier.
+
+***
+
+# ⏱️ 10. Timeline MEP
+
+**H‑48 à H‑24**
+
+* validation dry‑run et infra
+
+**H‑12**
+
+* gel des changements
+
+**H0**
+
+* restore DB + Elastic
+
+**H+1 à H+3**
+
+* validation technique
+
+**H+3 à H+6**
+
+* rejeu delta
+
+**H+6**
+
+* validation données
+
+**H+7**
+
+* cutover
+
+**H+8**
+
+* validation métier
+
+**H+24**
+
+* stabilisation
+
+Cette timeline permet de coordonner les équipes et sécuriser l’enchaînement des opérations.
+
+***
+
+# ✅ 11. Bénéfices
+
+La stratégie garantit zéro interruption métier grâce au legacy actif. Elle réduit la charge en production en déportant les traitements en PREPROD. Elle permet une validation progressive, une optimisation des performances et un fallback sécurisé. Elle apporte également une grande flexibilité et une meilleure maîtrise des risques.
+
+***
+
+# ⚠️ 12. Points de vigilance
+
+Les points critiques concernent principalement la gestion du delta, la synchronisation des flux et le monitoring. Il est essentiel de vérifier la cohérence des données après chaque étape et de maîtriser les performances du système. Une surveillance fine est nécessaire pour détecter les anomalies rapidement.
+
+***
+
+# 🎯 13. Conclusion
+
+Cette stratégie repose sur une approche progressive et sécurisée combinant rejeu, snapshot, delta et coexistence legacy. Elle permet de construire un état cible fiable avant bascule, tout en garantissant la continuité de service. Les dry‑runs, la validation infra et le fallback assurent une maîtrise complète de la migration.
+
+***
+
+# 🔥 Conclusion clé
+
+> **Le legacy assure la continuité, le rejeu construit la cible, et le delta garantit la vérité avant la bascule.**
 
 
 
