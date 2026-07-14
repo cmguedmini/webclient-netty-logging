@@ -1,0 +1,80 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POC Antora LuPIA - Version enrichie</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/night.css">
+<style>.reveal h1,.reveal h2{color:#60a5fa}.box{background:#162033;padding:20px;border-radius:12px}.small{font-size:.75em}</style>
+</head><body><div class='reveal'><div class='slides'>
+<section><h1>Antora & Docs-as-Code</h1><h3>POC LuPIA</h3><p>Documentation centralisée, versionnée et maintenable</p></section>
+<section><h2>Pourquoi Antora ?</h2><ul><li>Génération de sites statiques</li><li>Sources Git</li><li>Versionning de la documentation</li><li>Modularité (Components / Modules)</li><li>Intégration CI/CD</li></ul></section>
+<section><h2>Concepts fondamentaux</h2><div class='box'><b>Component</b> = domaine documentaire<br><b>Module</b> = sous-ensemble du composant<br><b>Page</b> = fichier AsciiDoc<br><b>Playbook</b> = agrégation des sources</div></section>
+<section><h2>Architecture Multi-Repos LuPIA</h2><pre>lupia-back/docs
+lupia-front/docs
+parser-indexer/docs
+       │
+       ▼
+ antora-playbook.yml
+       │
+       ▼
+     ANTORA
+       │
+       ▼
+Documentation LuPIA</pre></section>
+<section><h2>Agrégation Antora</h2><pre>Backend Repo ─┐
+Frontend Repo ├─► Antora ► Site documentaire unique
+Parser Repo ──┘</pre></section>
+<section><h2>Exemple de Playbook</h2><pre class='small'>site:
+  title: Documentation LuPIA
+
+content:
+  sources:
+    - url: https://gitlab/.../lupia-back.git
+      branches: develop
+      start_path: docs
+
+    - url: https://gitlab/.../lupia-front.git
+      branches: develop</pre></section>
+<section><h2>Structure recommandée LuPIA</h2><pre>ROOT/
+ ├─ functional/
+ ├─ architecture/
+ ├─ operations/
+ └─ assets/images/
+
+backend/
+frontend/
+parser-indexer/</pre></section>
+<section><h2>Documentation Fonctionnelle</h2><ul><li>Introduction</li><li>Base légale</li><li>Modules métiers</li><li>Processus BPMN</li><li>Acteurs et rôles</li><li>MCD</li></ul></section>
+<section><h2>Documentation Technique</h2><ul><li>Architecture globale</li><li>Diagrammes PlantUML</li><li>Interfaces</li><li>API</li><li>Monitoring</li><li>Déploiement</li></ul></section>
+<section><h2>Démonstration Développeur</h2><ol><li>Créer une page .adoc</li><li>Mettre à jour nav.adoc</li><li>Ajouter une image ou un diagramme</li><li>Commit Git</li><li>Build Antora</li></ol></section>
+<section><h2>Exemple AsciiDoc</h2><pre>= Replay Flow
+
+== Objectif
+Retraiter les messages historiques.
+
+image::architecture/replay.svg[]
+
+xref:index.adoc[Accueil]</pre></section>
+<section><h2>Workflow Git → Antora</h2><pre>Développeur
+   │
+   ▼
+Fichiers .adoc
+   │
+   ▼
+Merge Request
+   │
+   ▼
+Pipeline CI/CD
+   │
+   ▼
+Build Antora
+   │
+   ▼
+Site HTML</pre></section>
+<section><h2>Publication Locale</h2><pre>npm install
+npm run build:dev:fetch
+
+build/site/index.html</pre></section>
+<section><h2>Bénéfices</h2><ul><li>Documentation synchronisée avec le code</li><li>Navigation unique</li><li>Références croisées</li><li>Historisation Git</li><li>Collaboration simplifiée</li></ul></section>
+<section><h1>Conclusion</h1><div class='box'>Une fonctionnalité est terminée lorsque le code ET la documentation sont livrés ensemble.</div></section>
+</div></div>
+<script src='https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js'></script><script>Reveal.initialize({hash:true,slideNumber:true});</script></body></html>

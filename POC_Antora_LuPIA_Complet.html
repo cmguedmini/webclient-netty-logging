@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>POC Antora LuPIA</title><style>body{margin:0;font-family:Segoe UI,Arial;background:#0f172a;color:white}.slide{height:100vh;padding:50px;box-sizing:border-box;border-bottom:2px solid #1e293b}h1{color:#60a5fa}h2{color:#93c5fd}.grid{display:grid;grid-template-columns:1fr 1fr;gap:30px}.card{background:#1e293b;padding:20px;border-radius:12px}.diagram{background:#111827;border:1px solid #334155;padding:20px;border-radius:12px;font-family:Consolas,monospace;white-space:pre}.imgph{background:linear-gradient(135deg,#2563eb,#0ea5e9);padding:40px;border-radius:12px;text-align:center;font-weight:bold}</style></head><body>
+<section class="slide"><h1>POC Antora – Documentation as Code</h1><h2>Projet LuPIA</h2><ul><li>Introduction à Antora</li><li>Agrégation multi-repos</li><li>Structure documentaire standard</li><li>Démonstration développeur</li><li>Publication locale</li></ul></section>
+<section class="slide"><h1>Pourquoi Antora ?</h1><div class="grid"><div><ul><li>Documentation versionnée avec Git</li><li>Docs-as-Code</li><li>AsciiDoc</li><li>Xref entre composants</li><li>Site statique généré automatiquement</li></ul></div><div class="imgph">👨‍💻 Git → Antora → 🌐 Documentation</div></div></section>
+<section class="slide"><h1>Architecture Multi-Repos</h1><div class="diagram">backend-repo/docs
+frontend-repo/docs
+parser-indexer-repo/docs
+          │
+          ▼
+  antora-playbook.yml
+          │
+          ▼
+        ANTORA
+          │
+          ▼
+ Documentation LuPIA</div><p>Chaque équipe conserve sa documentation dans son dépôt.</p></section>
+<section class="slide"><h1>Agrégation Antora</h1><div class="diagram">          ┌─────────────────────┐
+          │ antora-playbook.yml│
+          └──────────┬─────────┘
+                     │
+     ┌───────────────┼───────────────┐
+     ▼               ▼               ▼
+  Backend         Frontend      Parser
+   docs/           docs/         docs/
+     └─────────────┼─────────────┘
+                   ▼
+         Site documentaire unique</div></section>
+<section class="slide"><h1>Structure standard LuPIA</h1><div class="diagram">modules/
+├─ ROOT/
+│  ├─ pages/
+│  └─ assets/images/
+├─ backend/
+├─ frontend/
+└─ parser-indexer/</div></section>
+<section class="slide"><h1>Documentation ROOT</h1><div class="grid"><div class="card"><h2>Functional</h2><ul><li>Introduction</li><li>Processus</li><li>Acteurs</li><li>MCD</li></ul></div><div class="card"><h2>Architecture & Operations</h2><ul><li>Vue globale</li><li>Diagrammes</li><li>Déploiement</li><li>Monitoring</li></ul></div></div></section>
+<section class="slide"><h1>Images et diagrammes</h1><div class="diagram">modules/ROOT/assets/images/
+├─ functional/
+├─ architecture/
+└─ operations/</div><div class="imgph" style="margin-top:20px;">🖼️ Diagrammes PlantUML • BPMN • MCD</div></section>
+<section class="slide"><h1>Démonstration Développeur</h1><ol><li>Créer replay-flow.adoc</li><li>Mettre à jour nav.adoc</li><li>Ajouter un diagramme PlantUML</li><li>Commit Git</li><li>Build Antora</li></ol></section>
+<section class="slide"><h1>Exemple AsciiDoc</h1><div class="diagram">= Replay Flow
+
+== Objectif
+Retraiter les messages historiques.
+
+xref:parser-indexer:overview.adoc[Retour]</div></section>
+<section class="slide"><h1>Workflow Git → Antora</h1><div class="diagram">👨‍💻 Développeur
+      │
+      ▼
+Modification .adoc
+      │
+      ▼
+Commit + Merge Request
+      │
+      ▼
+Build Antora
+      │
+      ▼
+🌐 Site HTML publié</div></section>
+<section class="slide"><h1>Publication Locale</h1><div class="diagram">npm install
+npm run build:dev:fetch
+
+build/site/index.html</div><p>Visualisation immédiate des modifications.</p></section>
+<section class="slide"><h1>Bénéfices</h1><ul><li>Documentation toujours synchronisée avec le code</li><li>Versionnée via Git</li><li>Navigation unique</li><li>Contribution simple pour les développeurs</li><li>Centralisation des connaissances</li></ul></section>
+<section class="slide"><h1>Conclusion</h1><div class="imgph">Code + Documentation = Même Merge Request ✅</div></section>
+</body></html>
